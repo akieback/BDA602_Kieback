@@ -1,1 +1,6 @@
 numpy
+pandas
+pip-tools
+pre-commit
+plotly
+scikit-learn
