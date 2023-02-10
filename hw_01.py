@@ -64,7 +64,6 @@ def create_summary(data):
     print("50th Quantile: ", np.quantile(nd_array, 0.50, axis=0))  # half
     print("75th Quantile: ", np.quantile(nd_array, 0.75, axis=0))  # three quarter
     # get summary of dataframe with pandas
-    # print(data.describe())
 
 
 def generate_plots(df):
@@ -205,11 +204,13 @@ def build_Models(df):
     print(f"Predictions: {prediction_dt}")
 
 
-def newtry2(df):
+def mean_of_difference(df):
     df["is_setosa"] = (df["class"] == "Iris-setosa").astype(int)
     df["is_versicolor"] = (df["class"] == "Iris-versicolor").astype(int)
     df["is_virginica"] = (df["class"] == "Iris-virginica").astype(int)
 
+    count = len(df.index)
+    i = 0
     # Calculate the rate of `is_setosa` for each bin
     for predictor in [
         "sepal length in cm",
@@ -218,6 +219,8 @@ def newtry2(df):
         "petal width in cm",
     ]:
         for response_boolean in ["is_setosa", "is_versicolor", "is_virginica"]:
+            amount = df[df[response_boolean] == 1].shape[0]
+            horizontal = amount / count
             bins = 10
             hist, bin_edges = np.histogram(df[predictor], bins=bins)
             bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
@@ -233,7 +236,7 @@ def newtry2(df):
                 go.Bar(
                     x=binned_df["bin_center"],
                     y=binned_df["bin_count"],
-                    name="histogram",
+                    name="Count of Iris",
                 ),
                 secondary_y=False,
             )
@@ -241,19 +244,32 @@ def newtry2(df):
                 go.Scatter(
                     x=binned_df["bin_center"],
                     y=binned_df[response_boolean],
-                    name=response_boolean,
+                    name="µi - µpop",
                     line=dict(color="red"),
+                    connectgaps=True,
                 ),
                 secondary_y=True,
             )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[min(df[predictor]), max(df[predictor])],
+                    y=[horizontal, horizontal],
+                    name="µpop",
+                ),
+                secondary_y=True,
+            )
+
             fig.update_layout(
                 title=response_boolean,
                 xaxis_title=predictor,
-                yaxis_title=f"Rate of {response_boolean}",
             )
-            fig.update_yaxes(title_text="<b>Main</b> Y - axis ", secondary_y=False)
-            fig.update_yaxes(title_text="<b>secondary</b> Y - axis ", secondary_y=True)
-            fig.show()
+            fig.update_yaxes(title_text="<b>Count</b>", secondary_y=False)
+            fig.update_yaxes(title_text="<b>Response</b>", secondary_y=True)
+            fig.write_html(
+                file="Plots/diff_mean{}.html".format(i), include_plotlyjs="cdn"
+            )
+            i += 1
 
 
 def main():
@@ -263,9 +279,7 @@ def main():
     create_summary(df)
     generate_plots(df)
     build_Models(df)
-    # seite2(df)
-    # try_some(df)
-    newtry2(df)
+    mean_of_difference(df)
 
 
 if __name__ == "__main__":
