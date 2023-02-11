@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 
@@ -13,13 +16,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
 
-def create_folder():
-    path = os.getcwd() + "/Plots"
-    if os.path.exists(path):
+def create_folder():  # create a folder for the output
+    path = os.getcwd() + "/Plots"  # get current path + "/Plots"
+    if os.path.exists(path):  # if path exists do nothing
         pass
-    else:
+    else:  # if path does not exist create a new output
         os.mkdir(path)
-        print("Output folder got created")
+        print_heading("Output folder got created")
 
 
 def print_heading(title):
@@ -35,10 +38,10 @@ def load_data(data):
     df = pd.read_csv(data)
     # adding column name to make it easier
     df.columns = [
-        "sepal length in cm",
-        "sepal width in cm",
-        "petal length in cm",
-        "petal width in cm",
+        "sepal_length",
+        "sepal_width",
+        "petal_length",
+        "petal_width",
         "class",
     ]
     return df
@@ -68,60 +71,45 @@ def create_summary(data):
 
 def generate_plots(df):
     # inspired by the plotly website
-    fig1 = px.scatter(
+    fig1 = px.scatter(  # create scatter plot
         df,
-        x="sepal width in cm",
-        y="sepal length in cm",
+        x="sepal_width",
+        y="sepal_length",
         color="class",
-        size="petal length in cm",
-        hover_data=["petal width in cm"],
+        size="petal_length",
+        hover_data=["petal_width"],
         symbol="class",
     )
-    fig1.write_html(file="Plots/scatter.html", include_plotlyjs="cdn")
+    fig1.write_html(file="Plots/scatter.html", include_plotlyjs="cdn")  # save plot
 
-    fig2 = px.scatter_matrix(
+    fig2 = px.scatter_matrix(  # create scatter matrix plot
         df,
         dimensions=[
-            "sepal width in cm",
-            "sepal length in cm",
-            "petal width in cm",
-            "petal length in cm",
+            "sepal_width",
+            "sepal_length",
+            "petal_width",
+            "petal_length",
         ],
         color="class",
     )
     fig2.write_html(file="Plots/scatter_matrix.html", include_plotlyjs="cdn")
 
-    fig3 = px.density_contour(
-        df, x="sepal width in cm", y="sepal length in cm", color="class"
+    fig3 = px.density_contour(  # create density contour plot
+        df, x="sepal_width", y="sepal_length", color="class"
     )
     fig3.write_html(file="Plots/density_contour.html", include_plotlyjs="cdn")
 
-    fig4 = px.histogram(
-        df, x="sepal width in cm", y="sepal length in cm", color="class"
+    fig4 = px.histogram(  # create histogram plot
+        df, x="sepal_width", y="sepal_length", color="class"
     )
     fig4.write_html(file="Plots/histogram.html", include_plotlyjs="cdn")
 
-    for i in range(4):
+    for i in range(4):  # create 4 violin plots
         fig5 = px.violin(df, x="class", y=df.columns[i], color="class")
-        fig5.write_html(file="Plots/name{}.html".format(i), include_plotlyjs="cdn")
-    """
-    fig2 = px.parallel_coordinates(df, color="class", labels={"class": "Species",
-                      "sepal width in cm": "Sepal Width", "sepal length in cm": "Sepal Length",
-                      "petal width in cm": "Petal Width", "petal length in cm": "Petal Length", },
-                        color_continuous_scale=px.colors.diverging.Tealrose, color_continuous_midpoint=2)
-
-    fig2.write_html(file="Plots/parallel.html", include_ggplotly="cdn")
-
-    fig1 = go.Figure()
-    for column in df.columns:
-        fig1.add_trace(go.Violin(x="class",
-                                 y=df["class"][df["class"] == column],
-                                 name=column,
-                                 box_visible=True,
-                                 meanline_visible=True))
-
-    fig1.write_html(file="Plots/try.html", include_ggplotly="cdn")
-    """
+        fig5.write_html(
+            file="Plots/violin_chart_{}.html".format(df.columns[i]),
+            include_plotlyjs="cdn",
+        )
 
 
 def build_Models(df):
@@ -130,12 +118,12 @@ def build_Models(df):
 
     X_orig = df[
         [
-            "sepal length in cm",
-            "sepal width in cm",
-            "petal length in cm",
-            "petal width in cm",
+            "sepal_length",
+            "sepal_width",
+            "petal_length",
+            "petal_width",
         ]
-    ].values
+    ].values  # set X_origin values
 
     y = df[["class"]].values
 
@@ -150,6 +138,7 @@ def build_Models(df):
     prediction = random_forest.predict(scale)
     probability = random_forest.predict_proba(scale)
 
+    print_heading("Random Forest Without Pipeline")
     print(f"Probability: {probability}")
     print(f"Predictions: {prediction}")
 
@@ -175,8 +164,7 @@ def build_Models(df):
             (
                 "NearestNeighbor",
                 KNeighborsClassifier(),
-            ),  # NearestNeighbors.__init__() got an unexpected keyword argument
-            # 'random_state'
+            ),
         ]
     )
 
@@ -205,32 +193,39 @@ def build_Models(df):
 
 
 def mean_of_difference(df):
-    df["is_setosa"] = (df["class"] == "Iris-setosa").astype(int)
+    df["is_setosa"] = (df["class"] == "Iris-setosa").astype(int)  # set boolean values
     df["is_versicolor"] = (df["class"] == "Iris-versicolor").astype(int)
     df["is_virginica"] = (df["class"] == "Iris-virginica").astype(int)
 
-    count = len(df.index)
-    i = 0
-    # Calculate the rate of `is_setosa` for each bin
+    count = len(
+        df.index
+    )  # store length of df in count variable to later calculate mean line
+    # Calculate the rate of response boolean for each bin
+    # using for loop to only have the code once and easy to change
     for predictor in [
-        "sepal length in cm",
-        "sepal width in cm",
-        "petal length in cm",
-        "petal width in cm",
+        "sepal_length",
+        "sepal_width",
+        "petal_length",
+        "petal_width",
     ]:
         for response_boolean in ["is_setosa", "is_versicolor", "is_virginica"]:
-            amount = df[df[response_boolean] == 1].shape[0]
-            horizontal = amount / count
-            bins = 10
-            hist, bin_edges = np.histogram(df[predictor], bins=bins)
-            bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-            binned_df = df.groupby(pd.cut(df[predictor], bins=bin_edges)).mean()
+            amount = df[df[response_boolean] == 1].shape[0]  # store count of each class
+            horizontal = amount / count  # calculate rate for horizontal line
+            hist, bin_edges = np.histogram(
+                df[predictor], bins=10  # set number of bins
+            )  # use numpy because its easier
+            bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])  # calculate bin center
+            binned_df = df.groupby(pd.cut(df[predictor], bins=bin_edges)).mean(
+                numeric_only=True
+            )  # calculate mean
+            # The default value of numeric_only in DataFrameGroupBy.mean is deprecated. In a future version,
+            # numeric_only will default to False. Thats why we specify it as True
             binned_df["bin_center"] = bin_centers
             binned_df["bin_count"] = hist
 
             # print_heading("Binned")
             # print(binned_df.head())
-            # Create the bar plot with a line chart for the rate of `is_setosa`
+            # Create the bar plot with a line chart for the rate of each boolean response
             fig = make_subplots(specs=[[{"secondary_y": True}]])
             fig.add_trace(
                 go.Bar(
@@ -238,7 +233,7 @@ def mean_of_difference(df):
                     y=binned_df["bin_count"],
                     name="Count of Iris",
                 ),
-                secondary_y=False,
+                secondary_y=False,  # set one of 2 y-axis
             )
             fig.add_trace(
                 go.Scatter(
@@ -248,7 +243,7 @@ def mean_of_difference(df):
                     line=dict(color="red"),
                     connectgaps=True,
                 ),
-                secondary_y=True,
+                secondary_y=True,  # set 2nd of 2 y-axis
             )
 
             fig.add_trace(
@@ -267,9 +262,9 @@ def mean_of_difference(df):
             fig.update_yaxes(title_text="<b>Count</b>", secondary_y=False)
             fig.update_yaxes(title_text="<b>Response</b>", secondary_y=True)
             fig.write_html(
-                file="Plots/diff_mean{}.html".format(i), include_plotlyjs="cdn"
+                file=f"Plots/diff_mean_{predictor}_{response_boolean}.html",
+                include_plotlyjs="cdn",
             )
-            i += 1
 
 
 def main():
