@@ -5,7 +5,7 @@ USE baseball;
 
 -- get sum of bats and hits for each player over all time
 CREATE OR REPLACE TABLE historical_average AS
-SELECT batter, SUM(atBat) AS Bats, SUM(Hit) AS Hits, SUM(Hit) / SUM(atBat) AS Average
+SELECT batter, SUM(atBat) AS Bats, SUM(Hit) AS Hits, (CASE WHEN SUM(atBat) > 0 THEN SUM(Hit) / SUM(atBat) ELSE 0 END) AS Average
 FROM batter_counts
 GROUP BY batter
 ;
