@@ -8,7 +8,6 @@ CREATE OR REPLACE TABLE historical_average AS
 SELECT batter, SUM(atBat) AS Bats, SUM(Hit) AS Hits, SUM(Hit) / SUM(atBat) AS Average
 FROM batter_counts
 GROUP BY batter
-LIMIT 0, 20
 ;
 
 
