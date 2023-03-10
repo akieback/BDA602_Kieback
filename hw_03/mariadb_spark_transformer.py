@@ -79,7 +79,7 @@ class BatterAvgTransformer(Transformer):
             SELECT bc.batter, bc.game_id, g.local_date AS dates, bc.Hit, bc.atBat
             FROM batter_counts bc
                 INNER JOIN game g ON bc.game_id = g.game_id
-            WHERE bc.batter = 120074
+            --WHERE bc.batter = 120074
             GROUP BY bc.batter, g.local_date, bc.game_id, bc.Hit, bc.atBat
             ORDER BY g.local_date;
             """
