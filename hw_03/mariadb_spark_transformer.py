@@ -13,7 +13,7 @@ class BatterAvgTransformer(Transformer):
 
     # concept from the lecture notes
     # initiate the class
-    def __init__(self, inputCols=None, outputCol=None):
+    def __init__(self):
         super(BatterAvgTransformer, self).__init__()
         self.appName = "MariaDB Baseball Test"
         self.master = "local"
@@ -91,9 +91,9 @@ class BatterAvgTransformer(Transformer):
         return df_base_table
 
     def _transform(self, df):
-        """
-        Calculates the average of hits per at-bat for each batter
-        """
+
+        # Calculates the average of hits per at-bat for each batter over the last 100 days
+
         df_rolling_average = self.spark.sql(
             """
             SELECT  b1.game_id, b1.dates, b1.batter,
