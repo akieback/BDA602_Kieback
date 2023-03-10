@@ -27,7 +27,7 @@ class BatterAvgTransformer(Transformer):
             .getOrCreate()
         )
         self.database = "baseball"
-        self.user = "user"
+        self.user = input("input your user")
         self.server = "localhost"
         self.port = 3306
         return
