@@ -11,6 +11,7 @@ from dataset_loader import TestDatasets
 from plotly import express as px
 from plotly.subplots import make_subplots
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
 
 
 def print_heading(title):
@@ -183,6 +184,7 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
 
 def diff_mean_response(df, predictors, response, re_pr_type):
     return_list = []
+    path_list = []
     create_folder("Plots/diff_mean")
     count = len(
         df.index
@@ -254,6 +256,7 @@ def diff_mean_response(df, predictors, response, re_pr_type):
                 file=f"Plots/diff_mean/diff_mean_{predictor}_{response}.html",
                 include_plotlyjs="cdn",
             )
+            path_list.append(f"Plots/diff_mean/diff_mean_{predictor}_{response}.html")
             return_list.append([mean_squared, weighted_mean])
         else:
             # if its categorical each class is its own bin
@@ -261,10 +264,10 @@ def diff_mean_response(df, predictors, response, re_pr_type):
             bin_values = np.sort(df[predictor].unique())
 
             # Get the mean survival rate for each class
-            mean_survival = []
+            mean_response = []
             bin_count = []
             for c in bin_values:
-                mean_survival.append(df[df[predictor] == c][response].mean())
+                mean_response.append(df[df[predictor] == c][response].mean())
                 bin_count.append(df[df[predictor] == c][predictor].count())
 
             # get weighted and unweighted mean
@@ -272,9 +275,9 @@ def diff_mean_response(df, predictors, response, re_pr_type):
             pre_mean_squared = 0
             weighted_mean = 0
             for i in range(len(bin_values)):
-                pre_mean_squared += (mean_survival[i] - horizontal) ** 2
+                pre_mean_squared += (mean_response[i] - horizontal) ** 2
                 weight = bin_count[i] / sum(bin_count)
-                weighted_mean += weight * ((i - horizontal) ** 2)
+                weighted_mean += weight * ((mean_response[i] - horizontal) ** 2)
             mean_squared = pre_mean_squared * 0.1
 
             bin_counts = df[predictor].value_counts()
@@ -291,7 +294,7 @@ def diff_mean_response(df, predictors, response, re_pr_type):
             fig8.add_trace(
                 go.Scatter(
                     x=bin_values,
-                    y=mean_survival,
+                    y=mean_response,
                     name="µi - µpop",
                     line=dict(color="red"),
                     connectgaps=True,
@@ -319,56 +322,87 @@ def diff_mean_response(df, predictors, response, re_pr_type):
                 include_plotlyjs="cdn",
             )
             return_list.append([mean_squared, weighted_mean])
-    return return_list
+            path_list.append(f"Plots/diff_mean/diff_mean_{predictor}_{response}.html")
+    return return_list, path_list
 
 
 def rand_forest_ranking(df, predictors, response, re_pr_type):
     return_list = []
     print_heading("Random Forest")
-    # continuous_predictors = []
-    """
+    continuous_predictors = []
+
     for predictor in predictors:
         # https://stackoverflow.com/questions/26924904/check-if-dataframe-column-is-categorical
-        if df[predictor].dtype != 'object':
+        if df[predictor].dtype != "object":
             continuous_predictors.append(predictor)
     """
     for predictor in predictors:
-        X = df[predictor]
-        Y = df[response]
+        X = df[predictor].values
+        Y = df[response].values
+    """
 
+    X = df[continuous_predictors].values
+    Y = df[response].values
+
+    if (
+        # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
+        # Regression: Continuous response
+        re_pr_type[response]
+        == "continuous"
+    ):
+        # Fit RandomForestRegressor
+        rf_model = RandomForestRegressor(random_state=1234)
+        rf_model.fit(X, Y.ravel())
+
+        # Get feature importances
+        rf_importances = rf_model.feature_importances_
+
+        return_list.append(rf_importances)
+
+    elif (
+        # inspired by first assignment
+        # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
+        # Logistic Regression: Boolean response
+        re_pr_type[response]
+        == "boolean"
+    ):
+        # Fit RandomForestClassifier
+        s_scaler = StandardScaler()
+        scale = s_scaler.fit_transform(X)
+        rf_model = RandomForestClassifier(random_state=1234)
+        rf_model.fit(scale, Y.ravel())
+
+        # Get feature importances
+        rf_importances = rf_model.feature_importances_
+
+        return_list.append(rf_importances)
+    else:
+        return_list.append([0, 0])
+
+    final_forest = []
+    z = 0
+    for predictor in predictors:
         if (
             # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
             # Regression: Continuous response
-            re_pr_type[response] == "continuous"
-            and re_pr_type[predictor] == "continuous"
+            re_pr_type[predictor]
+            == "continuous"
         ):
-            # Fit RandomForestClassifier
-            rf_model = RandomForestRegressor(random_state=1234)
-            rf_model.fit(X, Y)
-
-            # Get feature importances
-            rf_importances = rf_model.feature_importances_
-
-            return_list.append(rf_importances)
-
-        elif (
-            # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
-            # Logistic Regression: Boolean response
-            re_pr_type[response] == "boolean"
-            and re_pr_type[predictor] == "continuous"
-        ):
-            # Fit RandomForestClassifier
-            rf_model = RandomForestClassifier(random_state=1234)
-            rf_model.fit(X, Y)
-
-            # Get feature importances
-            rf_importances = rf_model.feature_importances_
-
-            return_list.append(rf_importances)
+            final_forest.append(return_list[0][z])
+            z += 1
         else:
-            return_list.append([0, 0])
+            final_forest.append("NaN")
 
-    return return_list
+    return final_forest
+
+
+def turn_path_to_link(list):
+    links = []
+    for i in list:
+        link = f'<a href="{i}">link</a>'
+        links.append(link)
+
+    return links
 
 
 def main():
@@ -376,18 +410,57 @@ def main():
     df, predictors, response = get_dataset("titanic")
     re_pr_type = get_response_predictor_type(df, predictors, response)
     paths = create_plots(re_pr_type, df, predictors, response)
-
     # p-value & t-score (continuous predictors only) along with it`s plot
     scores = get_pt_value_score(df, predictors, response, re_pr_type)
+    means, plots = diff_mean_response(df, predictors, response, re_pr_type)
+    forest = rand_forest_ranking(df, predictors, response, re_pr_type)
 
-    means = diff_mean_response(df, predictors, response, re_pr_type)
+    # create new Dataframe for html output (advise by Sean)
+    df_html_output = pd.DataFrame(
+        columns=[
+            "Predictor",
+            "Type",
+            "Plot",
+            "p_value",
+            "t_value",
+            "mean_squared",
+            "weighted_mean",
+            "Mean_Plots",
+            "RandomForest",
+        ]
+    )
+
+    i = 0
+    link1 = turn_path_to_link(paths)
+    link2 = turn_path_to_link(plots)
+    for predictor in predictors:
+        # https://www.geeksforgeeks.org/how-to-add-one-row-in-an-existing-pandas-dataframe/
+        df_html_output.loc[len(df_html_output.index)] = [
+            predictors[i],
+            re_pr_type[predictor],
+            link1[i],
+            scores[i][1],
+            scores[i][0],
+            means[i][0],
+            means[i][1],
+            link2[i],
+            forest[i],
+        ]
+        i += 1
+
+    f = open("html_output.html", "w")
+    output = df_html_output.to_html(
+        render_links=True,
+        escape=False,
+    )
+    f.write(output)
+    f.close()
 
     # needed to print because of linter
     print(paths)
     print(scores)
     print(means)
-    # forest = rand_forest_ranking(df, predictors, response, re_pr_type)
-
+    print(forest)
     # print_heading("hi")
 
 
