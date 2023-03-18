@@ -113,7 +113,6 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
     # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/5/1
     return_list_score = []
     create_folder("Plots/P_T_Value")
-    # else null so table is not fucked up
     for predictor in predictors:
         X = df[predictor]
         Y = df[response]
