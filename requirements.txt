@@ -36,17 +36,23 @@ numpy==1.24.2
     #   contourpy
     #   matplotlib
     #   pandas
+    #   patsy
     #   scikit-learn
     #   scipy
     #   seaborn
+    #   statsmodels
 packaging==23.0
     # via
     #   build
     #   matplotlib
+    #   statsmodels
 pandas==1.5.3
     # via
     #   -r requirements.in
     #   seaborn
+    #   statsmodels
+patsy==0.5.3
+    # via statsmodels
 pillow==9.4.0
     # via matplotlib
 pip-tools==6.12.3
@@ -64,10 +70,6 @@ pyparsing==3.0.9
 pyproject-hooks==1.0.0
     # via build
 pyspark==3.0.3
-    # via
-    #   -r requirements.in
-    #   pyspark-stubs
-pyspark-stubs==3.0.0.post3
     # via -r requirements.in
 python-dateutil==2.8.2
     # via
@@ -80,11 +82,17 @@ pyyaml==6.0
 scikit-learn==1.2.2
     # via -r requirements.in
 scipy==1.10.1
-    # via scikit-learn
+    # via
+    #   scikit-learn
+    #   statsmodels
 seaborn==0.12.2
     # via -r requirements.in
 six==1.16.0
-    # via python-dateutil
+    # via
+    #   patsy
+    #   python-dateutil
+statsmodels==0.13.5
+    # via -r requirements.in
 tenacity==8.2.2
     # via plotly
 threadpoolctl==3.1.0
