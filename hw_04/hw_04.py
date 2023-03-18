@@ -458,6 +458,8 @@ def main():
 
     output_all_to_html(df_html_output)
 
+    print_heading("Program finished successfully")
+
 
 if __name__ == "__main__":
     sys.exit(main())
