@@ -110,6 +110,7 @@ def create_plots(re_pr_type, df, predictors, response):
 
 
 def get_pt_value_score(df, predictors, response, re_pr_type):
+    # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/5/1
     return_list_score = []
     create_folder("Plots/P_T_Value")
     # else null so table is not fucked up
@@ -158,7 +159,7 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
     return return_list_score
 
 
-def diff_mean_response(df, predictors, response, re_pr_type):
+def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
     return_list = []
     path_list = []
     create_folder("Plots/diff_mean")
@@ -169,7 +170,9 @@ def diff_mean_response(df, predictors, response, re_pr_type):
     horizontal = amount / count  # calculate rate for horizontal line
     for predictor in predictors:
         if re_pr_type[predictor] == "continuous":
-            hist, bin_edges = np.histogram(df[predictor], bins=10)  # set number of bins
+            hist, bin_edges = np.histogram(
+                df[predictor], bins=bins_amount
+            )  # set number of bins
             bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])  # calculate bin center
             binned_df = df.groupby(pd.cut(df[predictor], bins=bin_edges)).mean(
                 numeric_only=True
@@ -186,10 +189,15 @@ def diff_mean_response(df, predictors, response, re_pr_type):
             # formulas from lecture notes
             # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/6/3/8
             for i in binned_df[response]:
-                pre_mean_squared += (i - horizontal) ** 2
-                weight = hist[y] / binned_df["bin_count"].sum()
-                weighted_mean += weight * ((i - horizontal) ** 2)
-                y += 1
+                # if value is na than skip that
+                # https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
+                if pd.isna(i):
+                    pass
+                else:
+                    pre_mean_squared += (i - horizontal) ** 2
+                    weight = hist[y] / binned_df["bin_count"].sum()
+                    weighted_mean += weight * ((i - horizontal) ** 2)
+                    y += 1
             mean_squared = pre_mean_squared * 0.1
 
             # https://www.geeksforgeeks.org/how-to-implement-weighted-mean-square-error-in-python/
@@ -256,7 +264,7 @@ def diff_mean_response(df, predictors, response, re_pr_type):
                 pre_mean_squared += (mean_response[i] - horizontal) ** 2
                 weight = bin_count[i] / sum(bin_count)
                 weighted_mean += weight * ((mean_response[i] - horizontal) ** 2)
-            mean_squared = pre_mean_squared * 0.1
+            mean_squared = pre_mean_squared * (1 / bins_amount)
 
             bin_counts = df[predictor].value_counts()
 
@@ -382,7 +390,7 @@ def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest
     :param predictors: list of all predictors
     :param paths: list of initial plot paths
     :param plots: list of Diff of mean plot paths
-    :param re_pr_type: list of predictor types
+    :param re_pr_type: dict of predictor types
     :param scores: p-value and t-score
     :param means: un- and weighted means
     :param forest: list of Randomforest
@@ -442,7 +450,7 @@ def main():
     paths = create_plots(re_pr_type, df, predictors, response)
     # p-value & t-score (continuous predictors only) along with it`s plot
     scores = get_pt_value_score(df, predictors, response, re_pr_type)
-    means, plots = diff_mean_response(df, predictors, response, re_pr_type)
+    means, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
     forest = rand_forest_ranking(df, predictors, response, re_pr_type)
 
     df_html_output = create_output_df(
