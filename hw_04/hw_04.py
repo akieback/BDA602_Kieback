@@ -78,6 +78,7 @@ def create_plots(re_pr_type, df, predictors, response):
         elif (
             re_pr_type[response] == "boolean" and re_pr_type[predictor] == "categorical"
         ):
+            # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/4/2
             fig2 = px.density_heatmap(df, x=response, y=predictor)
             fig2.write_html(
                 file=f"Plots/heat_bool_cat_chart_{predictor}.html",
@@ -99,7 +100,7 @@ def create_plots(re_pr_type, df, predictors, response):
             re_pr_type[response] == "continuous"
             and re_pr_type[predictor] == "categorical"
         ):
-            # inspired lecture
+            # inspired lecture and first assignment
             fig4 = px.violin(df, x=response, y=predictor, color=response)
             fig4.write_html(
                 file=f"Plots/violin_con_cat_chart_{predictor}.html",
@@ -117,6 +118,7 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
         X = df[predictor]
         Y = df[response]
 
+        # https://www.geeksforgeeks.org/logistic-regression-using-statsmodels/
         if (
             # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
             # Regression: Continuous response
@@ -124,6 +126,7 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
             and re_pr_type[predictor] == "continuous"
         ):
             # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/5/1
+            # https://www.statology.org/statsmodels-linear-regression-p-value/
             predictor_lin = statsmodels.api.add_constant(X)
             linear_regression_model = statsmodels.api.OLS(Y, predictor_lin).fit()
             print(f"Variable: {predictor}")
@@ -197,7 +200,7 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
                     weight = hist[y] / binned_df["bin_count"].sum()
                     weighted_mean += weight * ((i - horizontal) ** 2)
                     y += 1
-            mean_squared = pre_mean_squared * 0.1
+            mean_squared = pre_mean_squared * (1 / bins_amount)
 
             # https://www.geeksforgeeks.org/how-to-implement-weighted-mean-square-error-in-python/
             # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/6/3/8
@@ -308,6 +311,7 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
             )
             return_list.append([mean_squared, weighted_mean])
             path_list.append(f"Plots/diff_mean/diff_mean_{predictor}_{response}.html")
+
     return return_list, path_list
 
 
@@ -333,6 +337,8 @@ def rand_forest_ranking(df, predictors, response, re_pr_type):
         rf_model.fit(X, Y.ravel())
 
         # Get feature importances
+        # inspired by lecture notes
+        # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/9/1/7
         rf_importances = rf_model.feature_importances_
 
         return_list_forest.append(rf_importances)
