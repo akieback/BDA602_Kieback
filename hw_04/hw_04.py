@@ -19,7 +19,7 @@ def print_heading(title):
     print(title)
     print("*" * 80)
     return
-    # source : https://teaching.mrsharky.com/sdsu_fall_2020_lecture02.html#/7/5/0
+    # inspired by https://teaching.mrsharky.com/sdsu_fall_2020_lecture02.html#/7/5/0
 
 
 def create_folder(name):  # create a folder for the output
@@ -65,7 +65,7 @@ def get_response_predictor_type(
 
 
 def create_plots(re_pr_type, df, predictors, response):
-    return_list = []
+    return_list_plots = []
     for predictor in predictors:
         if re_pr_type[response] == "boolean" and re_pr_type[predictor] == "continuous":
             # inspired by my first assignment
@@ -74,7 +74,7 @@ def create_plots(re_pr_type, df, predictors, response):
                 file=f"Plots/violin_bool_con_chart_{predictor}.html",
                 include_plotlyjs="cdn",
             )
-            return_list.append(f"Plots/violin_bool_con_chart_{predictor}.html")
+            return_list_plots.append(f"Plots/violin_bool_con_chart_{predictor}.html")
         elif (
             re_pr_type[response] == "boolean" and re_pr_type[predictor] == "categorical"
         ):
@@ -83,7 +83,7 @@ def create_plots(re_pr_type, df, predictors, response):
                 file=f"Plots/heat_bool_cat_chart_{predictor}.html",
                 include_plotlyjs="cdn",
             )
-            return_list.append(f"Plots/heat_bool_cat_chart_{predictor}.html")
+            return_list_plots.append(f"Plots/heat_bool_cat_chart_{predictor}.html")
         elif (
             re_pr_type[response] == "continuous"
             and re_pr_type[predictor] == "continuous"
@@ -94,7 +94,7 @@ def create_plots(re_pr_type, df, predictors, response):
                 file=f"Plots/scatter_con_con_chart_{predictor}.html",
                 include_plotlyjs="cdn",
             )
-            return_list.append(f"Plots/scatter_con_con_chart_{predictor}.html")
+            return_list_plots.append(f"Plots/scatter_con_con_chart_{predictor}.html")
         elif (
             re_pr_type[response] == "continuous"
             and re_pr_type[predictor] == "categorical"
@@ -105,12 +105,12 @@ def create_plots(re_pr_type, df, predictors, response):
                 file=f"Plots/violin_con_cat_chart_{predictor}.html",
                 include_plotlyjs="cdn",
             )
-            return_list.append(f"Plots/violin_con_cat_chart_{predictor}.html")
-    return return_list
+            return_list_plots.append(f"Plots/violin_con_cat_chart_{predictor}.html")
+    return return_list_plots
 
 
 def get_pt_value_score(df, predictors, response, re_pr_type):
-    return_list = []
+    return_list_score = []
     create_folder("Plots/P_T_Value")
     # else null so table is not fucked up
     for predictor in predictors:
@@ -133,19 +133,7 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
             t_value = round(linear_regression_model.tvalues[1], 6)
             p_value = "{:.6e}".format(linear_regression_model.pvalues[1])
 
-            return_list.append([t_value, p_value])
-            """
-            fig5 = px.scatter(x=X, y=Y, trendline="ols")
-            fig5.update_layout(
-                title=f"Variable: {predictor}: (t-value={t_value}) (p-value={p_value})",
-                xaxis_title=f"Variable: {predictor}",
-                yaxis_title="y",
-            )
-            fig5.write_html(
-                file=f"Plots/P_T_Value/regression_cont_response_{predictor}.html",
-                include_plotlyjs="cdn",
-            )
-            """
+            return_list_score.append([t_value, p_value])
         elif (
             # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
             # Logistic Regression: Boolean response
@@ -163,23 +151,11 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
             t_value = round(logistic_regression_model_fitted.tvalues[1], 6)
             p_value = "{:.6e}".format(logistic_regression_model_fitted.pvalues[1])
 
-            return_list.append([t_value, p_value])
-            """
-            fig6 = px.scatter(x=X, y=Y, trendline="ols")
-            fig6.update_layout(
-                title=f"Variable: {predictor}: (t-value={t_value}) (p-value={p_value})",
-                xaxis_title=f"Variable: {predictor}",
-                yaxis_title="y",
-            )
-            fig6.write_html(
-                file=f"Plots/P_T_Value/regression_bool_response_{predictor}.html",
-                include_plotlyjs="cdn",
-            )
-            """
+            return_list_score.append([t_value, p_value])
         else:
-            return_list.append([0, 0])
+            return_list_score.append([0, 0])
 
-    return return_list
+    return return_list_score
 
 
 def diff_mean_response(df, predictors, response, re_pr_type):
@@ -207,6 +183,8 @@ def diff_mean_response(df, predictors, response, re_pr_type):
             pre_mean_squared = 0
             y = 0
             weighted_mean = 0
+            # formulas from lecture notes
+            # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/6/3/8
             for i in binned_df[response]:
                 pre_mean_squared += (i - horizontal) ** 2
                 weight = hist[y] / binned_df["bin_count"].sum()
@@ -327,7 +305,7 @@ def diff_mean_response(df, predictors, response, re_pr_type):
 
 
 def rand_forest_ranking(df, predictors, response, re_pr_type):
-    return_list = []
+    return_list_forest = []
     print_heading("Random Forest")
     continuous_predictors = []
 
@@ -335,29 +313,22 @@ def rand_forest_ranking(df, predictors, response, re_pr_type):
         # https://stackoverflow.com/questions/26924904/check-if-dataframe-column-is-categorical
         if df[predictor].dtype != "object":
             continuous_predictors.append(predictor)
-    """
-    for predictor in predictors:
-        X = df[predictor].values
-        Y = df[response].values
-    """
 
     X = df[continuous_predictors].values
     Y = df[response].values
 
-    if (
-        # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
-        # Regression: Continuous response
-        re_pr_type[response]
-        == "continuous"
-    ):
+    # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/10/2
+    # Regression: Continuous response
+    if re_pr_type[response] == "continuous":
         # Fit RandomForestRegressor
+        # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html
         rf_model = RandomForestRegressor(random_state=1234)
         rf_model.fit(X, Y.ravel())
 
         # Get feature importances
         rf_importances = rf_model.feature_importances_
 
-        return_list.append(rf_importances)
+        return_list_forest.append(rf_importances)
 
     elif (
         # inspired by first assignment
@@ -375,9 +346,9 @@ def rand_forest_ranking(df, predictors, response, re_pr_type):
         # Get feature importances
         rf_importances = rf_model.feature_importances_
 
-        return_list.append(rf_importances)
+        return_list_forest.append(rf_importances)
     else:
-        return_list.append([0, 0])
+        return_list_forest.append([0, 0])
 
     final_forest = []
     z = 0
@@ -388,7 +359,7 @@ def rand_forest_ranking(df, predictors, response, re_pr_type):
             re_pr_type[predictor]
             == "continuous"
         ):
-            final_forest.append(return_list[0][z])
+            final_forest.append(return_list_forest[0][z])
             z += 1
         else:
             final_forest.append("NaN")
@@ -396,24 +367,27 @@ def rand_forest_ranking(df, predictors, response, re_pr_type):
     return final_forest
 
 
-def turn_path_to_link(list):
+def turn_path_to_link(paths):
     links = []
-    for i in list:
+    for i in paths:
         link = f'<a href="{i}">link</a>'
         links.append(link)
 
     return links
 
 
-def main():
-    create_folder("Plots")
-    df, predictors, response = get_dataset("titanic")
-    re_pr_type = get_response_predictor_type(df, predictors, response)
-    paths = create_plots(re_pr_type, df, predictors, response)
-    # p-value & t-score (continuous predictors only) along with it`s plot
-    scores = get_pt_value_score(df, predictors, response, re_pr_type)
-    means, plots = diff_mean_response(df, predictors, response, re_pr_type)
-    forest = rand_forest_ranking(df, predictors, response, re_pr_type)
+def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest):
+
+    """
+    :param predictors: list of all predictors
+    :param paths: list of initial plot paths
+    :param plots: list of Diff of mean plot paths
+    :param re_pr_type: list of predictor types
+    :param scores: p-value and t-score
+    :param means: un- and weighted means
+    :param forest: list of Randomforest
+    :return: a DataFrame to export to html
+    """
 
     # create new Dataframe for html output (advise by Sean)
     df_html_output = pd.DataFrame(
@@ -448,20 +422,34 @@ def main():
         ]
         i += 1
 
+    return df_html_output
+
+
+def output_all_to_html(df):
     f = open("html_output.html", "w")
-    output = df_html_output.to_html(
+    output = df.to_html(
         render_links=True,
         escape=False,
     )
     f.write(output)
     f.close()
 
-    # needed to print because of linter
-    print(paths)
-    print(scores)
-    print(means)
-    print(forest)
-    # print_heading("hi")
+
+def main():
+    create_folder("Plots")
+    df, predictors, response = get_dataset("titanic")
+    re_pr_type = get_response_predictor_type(df, predictors, response)
+    paths = create_plots(re_pr_type, df, predictors, response)
+    # p-value & t-score (continuous predictors only) along with it`s plot
+    scores = get_pt_value_score(df, predictors, response, re_pr_type)
+    means, plots = diff_mean_response(df, predictors, response, re_pr_type)
+    forest = rand_forest_ranking(df, predictors, response, re_pr_type)
+
+    df_html_output = create_output_df(
+        predictors, paths, plots, re_pr_type, scores, means, forest
+    )
+
+    output_all_to_html(df_html_output)
 
 
 if __name__ == "__main__":
