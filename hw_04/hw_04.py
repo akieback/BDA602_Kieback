@@ -168,14 +168,20 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
     count = len(
         df.index
     )  # store length of df in count variable to later calculate mean line
-    amount = df[df[response] == 1].shape[0]  # store count of each class
+    amount = sum(df[response])  # store count of each class
     horizontal = amount / count  # calculate rate for horizontal line
     for predictor in predictors:
         if re_pr_type[predictor] == "continuous":
+            if len(df[predictor].unique()) <= 10:
+                bins_amount = len(df[predictor].unique())
+
             hist, bin_edges = np.histogram(
                 df[predictor], bins=bins_amount
             )  # set number of bins
             bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])  # calculate bin center
+            for p in range(0, len(bin_edges) - 1):
+                bin_edges[p] -= 0.1  # so the lower bound is included
+            bin_edges[-1] += 0.1
             binned_df = df.groupby(pd.cut(df[predictor], bins=bin_edges)).mean(
                 numeric_only=True
             )  # calculate mean
