@@ -10,6 +10,7 @@ import statsmodels.api
 from dataset_loader import TestDatasets
 from plotly import express as px
 from plotly.subplots import make_subplots
+from scipy import stats
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
 
@@ -454,6 +455,35 @@ def output_all_to_html(df):
     f.close()
 
 
+def get_matrix_con_con(df, re_pr_type):
+    # Select only the continuous variables
+    continuous_vars = []
+    for k, v in re_pr_type.items():
+        if v == "boolean" or v == "categorical":
+            pass
+        else:
+            continuous_vars.append(k)
+
+    # Calculate the correlation coefficients
+    corr_matrix = pd.DataFrame(columns=continuous_vars, index=continuous_vars)
+    for var1 in continuous_vars:
+        for var2 in continuous_vars:
+            # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html
+            corr, _ = stats.pearsonr(df[var1], df[var2])
+            corr_matrix.loc[var1, var2] = corr
+
+    # Print the correlation matrix
+    print_heading("Con Con matrix")
+    print(corr_matrix)
+
+    # Plot the correlation matrix
+    fig9 = px.imshow(corr_matrix)
+    fig9.write_html(
+        file="Plots/matrix.html",
+        include_plotlyjs="cdn",
+    )
+
+
 def main():
     create_folder("Plots")
     df, predictors, response = get_dataset("titanic")
@@ -467,6 +497,8 @@ def main():
     df_html_output = create_output_df(
         predictors, paths, plots, re_pr_type, scores, means, forest
     )
+
+    get_matrix_con_con(df, re_pr_type)
 
     output_all_to_html(df_html_output)
 
