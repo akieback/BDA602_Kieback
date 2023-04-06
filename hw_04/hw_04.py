@@ -180,8 +180,8 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
             )  # set number of bins
             bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])  # calculate bin center
             for p in range(0, len(bin_edges) - 1):
-                bin_edges[p] -= 0.1  # so the lower bound is included
-            bin_edges[-1] += 0.1
+                bin_edges[p] -= 0.00000001  # so the lower bound is included
+            bin_edges[-1] += 0.00000001
             binned_df = df.groupby(pd.cut(df[predictor], bins=bin_edges)).mean(
                 numeric_only=True
             )  # calculate mean
