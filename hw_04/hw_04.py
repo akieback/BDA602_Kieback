@@ -22,7 +22,7 @@ def print_heading(title):
     # inspired by https://teaching.mrsharky.com/sdsu_fall_2020_lecture02.html#/7/5/0
 
 
-def create_folder(name):  # create a folder for the output
+def create_folder(name):  # create a folder for the output plots
     path = os.getcwd() + f"/{name}"  # get current path + "/Plots"
     if os.path.exists(path):  # if path exists do nothing
         pass
