@@ -174,7 +174,7 @@ def get_pt_value_score(df, predictors, response, re_pr_type):
 
 def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
     return_list = []
-    path_list = []
+    path_dict = {}
     create_folder("Plots/diff_mean")
     count = len(
         df.index
@@ -261,7 +261,9 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
                 file=f"Plots/diff_mean/diff_mean_{predictor}_{response}.html",
                 include_plotlyjs="cdn",
             )
-            path_list.append(f"Plots/diff_mean/diff_mean_{predictor}_{response}.html")
+            path_dict[
+                predictor
+            ] = f"Plots/diff_mean/diff_mean_{predictor}_{response}.html"
             return_list.append([mean_squared, weighted_mean])
         else:
             # if its categorical each class is its own bin
@@ -327,9 +329,11 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
                 include_plotlyjs="cdn",
             )
             return_list.append([mean_squared, weighted_mean])
-            path_list.append(f"Plots/diff_mean/diff_mean_{predictor}_{response}.html")
+            path_dict[
+                predictor
+            ] = f"Plots/diff_mean/diff_mean_{predictor}_{response}.html"
 
-    return return_list, path_list
+    return return_list, path_dict
 
 
 def rand_forest_ranking(df, predictors, response, re_pr_type):
@@ -439,6 +443,10 @@ def create_output_df_brute_force(
         ]
         i += 1
 
+    final = df_html_output.sort_values(by=["weighted_mean"], ascending=[False])
+
+    return final
+
     return df_html_output
 
 
@@ -446,28 +454,42 @@ def create_output_df_corr(
     predictor_list,
     col1,
     col2,
+    plots,
 ):
+    """
+
+    :param predictor_list: list of both predictors and the correlation
+    :param col1: specify column name
+    :param col2: specify column name
+    :param plots: dict of plots and predictor
+    :return: html string
+    """
     # create new Dataframe for html output (advise by Sean)
     df_html_output = pd.DataFrame(
-        columns=[
-            col1,
-            col2,
-            "corr",
-        ]
+        columns=[col1, col2, "corr", "Predictor 1", "Predictor 2"]
     )
 
     i = 0
 
     for predictor in predictor_list:
+        path1 = plots[predictor[0]]
+        path2 = plots[predictor[1]]
+        link1 = f'<a href="{path1}" target="_blank">link</a>'
+        link2 = f'<a href="{path2}" target="_blank">link</a>'
+
         # https://www.geeksforgeeks.org/how-to-add-one-row-in-an-existing-pandas-dataframe/
         df_html_output.loc[len(df_html_output.index)] = [
             predictor[0],
             predictor[1],
             predictor[2],
+            link1,
+            link2,
         ]
         i += 1
 
-    return df_html_output
+    final = df_html_output.sort_values(by=["corr"], ascending=[False])
+
+    return final
 
 
 def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest):
@@ -924,18 +946,28 @@ def matrix_html(path):
 
 
 def add_header(text):
-    html = f"<center><h1>{text}</h1></center>"
+    html = f"<center><h2>{text}</h2></center>"
     return html
 
 
 def style(html):
     x = html.replace("<table", "<center><table")
     y = x.replace("</table", "</table></center>")
+    y += "</body> </html>"
     return y
 
 
 def main():
-    html = ""
+    # https://www.w3schools.com/html/html_table_borders.asp
+    # https://www.color-hex.com/popular-colors.php
+    html = (
+        "<!DOCTYPE html><html><head><title>Midterm</title>"
+        "<style> "
+        "table, th, td { border: 1px solid white;"
+        "border-collapse: collapse;} th, td { "
+        "background-color: #81d8d0;} </style> </head> <body>"
+        "<center><h1>Midterm Adrian Kieback</h1></center>"
+    )
     curr_path = create_folder("Plots/")
 
     df, predictors, response = get_dataset("titanic")
@@ -946,7 +978,7 @@ def main():
     # paths = create_plots(re_pr_type, df, predictors, response)
     # p-value & t-score (continuous predictors only) along with it`s plot
     # scores = get_pt_value_score(df, predictors, response, re_pr_type)
-    means, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
+    _, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
     # forest = rand_forest_ranking(df, predictors, response, re_pr_type)
 
     paths_matrix = []
@@ -955,19 +987,19 @@ def main():
 
     path, corr_list = get_matrix_con_con(df, continuous_vars)
     paths_matrix.append(curr_path + path)
-    df_html_output2 = create_output_df_corr(corr_list, "con", "con")
+    df_html_output2 = create_output_df_corr(corr_list, "con", "con", plots)
     html += add_header("Continuous/ Continuous")
     html += get_html_string(df_html_output2)
 
     path, corr_list = get_matrix_con_cat(df, continuous_vars, categorical_vars)
     paths_matrix.append(curr_path + path)
-    df_html_output2 = create_output_df_corr(corr_list, "cat", "con")
+    df_html_output2 = create_output_df_corr(corr_list, "cat", "con", plots)
     html += add_header("Categorical/ Continuous")
     html += get_html_string(df_html_output2)
 
     path, corr_list = get_matrix_cat_cat(df, categorical_vars, categorical_vars)
     paths_matrix.append(curr_path + path)
-    df_html_output2 = create_output_df_corr(corr_list, "cat", "cat")
+    df_html_output2 = create_output_df_corr(corr_list, "cat", "cat", plots)
     html += add_header("Categorical/ Categorical")
     html += get_html_string(df_html_output2)
 
