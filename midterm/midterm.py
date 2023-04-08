@@ -400,7 +400,8 @@ def rand_forest_ranking(df, predictors, response, re_pr_type):
 def turn_path_to_link(paths):
     links = []
     for i in paths:
-        link = f'<a href="{i}">link</a>'
+        # https://www.freecodecamp.org/news/how-to-use-html-to-open-link-in-new-tab/
+        link = f'<a href="{i}" target="_blank">link</a>'
         links.append(link)
 
     return links
@@ -443,8 +444,6 @@ def create_output_df_brute_force(
 
 def create_output_df_corr(
     predictor_list,
-    paths,
-    scores,
     col1,
     col2,
 ):
@@ -453,23 +452,18 @@ def create_output_df_corr(
         columns=[
             col1,
             col2,
-            "mean_squared",
-            "weighted_mean",
-            "Mean_Plots",
+            "corr",
         ]
     )
 
     i = 0
-    link1 = turn_path_to_link(paths)
 
     for predictor in predictor_list:
         # https://www.geeksforgeeks.org/how-to-add-one-row-in-an-existing-pandas-dataframe/
         df_html_output.loc[len(df_html_output.index)] = [
             predictor[0],
             predictor[1],
-            scores[i][0],
-            scores[i][1],
-            link1[i],
+            predictor[2],
         ]
         i += 1
 
@@ -542,12 +536,14 @@ def output_all_to_html(html):
 def get_matrix_con_con(df, continuous_vars):
 
     # Calculate the correlation coefficients
+    corr_pair = []
     corr_matrix = pd.DataFrame(columns=continuous_vars, index=continuous_vars)
     for var1 in continuous_vars:
         for var2 in continuous_vars:
             # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html
             corr, _ = stats.pearsonr(df[var1], df[var2])
             corr_matrix.loc[var1, var2] = corr
+            corr_pair.append([var1, var2, corr])
 
     # Print the correlation matrix
     print_heading("Con Con matrix")
@@ -560,17 +556,19 @@ def get_matrix_con_con(df, continuous_vars):
         file=f"Plots/{path}",
         include_plotlyjs="cdn",
     )
-    return path
+    return path, corr_pair
 
 
 def get_matrix_con_cat(df, continuous_vars, categorical_vars):
     # Calculate the correlation coefficients
+    corr_pair = []
     corr_matrix = pd.DataFrame(columns=categorical_vars, index=continuous_vars)
     for var1 in categorical_vars:
         for var2 in continuous_vars:
             # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html
             corr = cor.cat_cont_correlation_ratio(df[var1], df[var2])
             corr_matrix.loc[var2, var1] = corr
+            corr_pair.append([var1, var2, corr])
 
     # Print the correlation matrix
     print_heading("Con Con matrix")
@@ -583,7 +581,7 @@ def get_matrix_con_cat(df, continuous_vars, categorical_vars):
         file=f"Plots/{path}",
         include_plotlyjs="cdn",
     )
-    return path
+    return path, corr_pair
 
 
 def get_matrix_cat_cat(
@@ -591,6 +589,7 @@ def get_matrix_cat_cat(
     x,
     y,
 ):
+    corr_pair = []
     # Calculate the correlation coefficients
     corr_matrix = pd.DataFrame(columns=x, index=y)
     for var1 in x:
@@ -598,6 +597,7 @@ def get_matrix_cat_cat(
             # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html
             corr = cor.cat_correlation(df[var1], df[var2])
             corr_matrix.loc[var2, var1] = corr
+            corr_pair.append([var1, var2, corr])
 
     # Print the correlation matrix
     print_heading("Con Con matrix")
@@ -610,7 +610,7 @@ def get_matrix_cat_cat(
         file=f"Plots/{path}",
         include_plotlyjs="cdn",
     )
-    return path
+    return path, corr_pair
 
 
 def brute_force_con(df, response, cont_list):
@@ -923,6 +923,17 @@ def matrix_html(path):
     return html
 
 
+def add_header(text):
+    html = f"<center><h1>{text}</h1></center>"
+    return html
+
+
+def style(html):
+    x = html.replace("<table", "<center><table")
+    y = x.replace("</table", "</table></center>")
+    return y
+
+
 def main():
     html = ""
     curr_path = create_folder("Plots/")
@@ -940,14 +951,27 @@ def main():
 
     paths_matrix = []
 
-    paths_matrix.append(curr_path + get_matrix_con_con(df, continuous_vars))
-    paths_matrix.append(
-        curr_path + get_matrix_con_cat(df, continuous_vars, categorical_vars)
-    )
-    paths_matrix.append(
-        curr_path + get_matrix_cat_cat(df, categorical_vars, categorical_vars)
-    )
+    # corr tables
 
+    path, corr_list = get_matrix_con_con(df, continuous_vars)
+    paths_matrix.append(curr_path + path)
+    df_html_output2 = create_output_df_corr(corr_list, "con", "con")
+    html += add_header("Continuous/ Continuous")
+    html += get_html_string(df_html_output2)
+
+    path, corr_list = get_matrix_con_cat(df, continuous_vars, categorical_vars)
+    paths_matrix.append(curr_path + path)
+    df_html_output2 = create_output_df_corr(corr_list, "cat", "con")
+    html += add_header("Categorical/ Continuous")
+    html += get_html_string(df_html_output2)
+
+    path, corr_list = get_matrix_cat_cat(df, categorical_vars, categorical_vars)
+    paths_matrix.append(curr_path + path)
+    df_html_output2 = create_output_df_corr(corr_list, "cat", "cat")
+    html += add_header("Categorical/ Categorical")
+    html += get_html_string(df_html_output2)
+
+    # Get matrix paths
     matrix_paths = matrix_html(paths_matrix)
 
     scores2, paths2, predictor_list = brute_force_con(df, response, continuous_vars)
@@ -955,6 +979,7 @@ def main():
     df_html_output2 = create_output_df_brute_force(
         predictor_list, paths2, scores2, "cont", "cont"
     )
+    html += add_header("Brute Force Continuous/ Continuous")
     html += get_html_string(df_html_output2)
 
     scores2, paths2, predictor_list = brute_force_cat(df, response, categorical_vars)
@@ -962,7 +987,7 @@ def main():
     df_html_output2 = create_output_df_brute_force(
         predictor_list, paths2, scores2, "cat", "cat"
     )
-
+    html += add_header("Brute Force Categorical/ Categorical")
     html += get_html_string(df_html_output2)
 
     scores2, paths2, predictor_list = brute_force_cat_cont(
@@ -972,10 +997,13 @@ def main():
     df_html_output2 = create_output_df_brute_force(
         predictor_list, paths2, scores2, "cat", "cont"
     )
-
+    html += add_header("Brute Force Categorical/ Continuous")
     html += get_html_string(df_html_output2)
+
+    # add graphs to html in iframe
     html += matrix_paths
-    output_all_to_html(html)
+    final_html = style(html)
+    output_all_to_html(final_html)
 
     print_heading("Program finished successfully")
 
