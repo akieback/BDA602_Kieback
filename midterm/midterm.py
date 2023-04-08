@@ -32,6 +32,7 @@ def create_folder(name):  # create a folder for the output plots
         os.mkdir(path)
         print_heading("Output folder got created")
     # inspired by my hw_01.py script
+    return path
 
 
 def get_dataset(name):
@@ -405,6 +406,76 @@ def turn_path_to_link(paths):
     return links
 
 
+def create_output_df_brute_force(
+    predictor_list,
+    paths,
+    scores,
+    col1,
+    col2,
+):
+    # create new Dataframe for html output (advise by Sean)
+    df_html_output = pd.DataFrame(
+        columns=[
+            col1,
+            col2,
+            "mean_squared",
+            "weighted_mean",
+            "Mean_Plots",
+        ]
+    )
+
+    i = 0
+    link1 = turn_path_to_link(paths)
+
+    for predictor in predictor_list:
+        # https://www.geeksforgeeks.org/how-to-add-one-row-in-an-existing-pandas-dataframe/
+        df_html_output.loc[len(df_html_output.index)] = [
+            predictor[0],
+            predictor[1],
+            scores[i][0],
+            scores[i][1],
+            link1[i],
+        ]
+        i += 1
+
+    return df_html_output
+
+
+def create_output_df_corr(
+    predictor_list,
+    paths,
+    scores,
+    col1,
+    col2,
+):
+    # create new Dataframe for html output (advise by Sean)
+    df_html_output = pd.DataFrame(
+        columns=[
+            col1,
+            col2,
+            "mean_squared",
+            "weighted_mean",
+            "Mean_Plots",
+        ]
+    )
+
+    i = 0
+    link1 = turn_path_to_link(paths)
+
+    for predictor in predictor_list:
+        # https://www.geeksforgeeks.org/how-to-add-one-row-in-an-existing-pandas-dataframe/
+        df_html_output.loc[len(df_html_output.index)] = [
+            predictor[0],
+            predictor[1],
+            scores[i][0],
+            scores[i][1],
+            link1[i],
+        ]
+        i += 1
+
+    return df_html_output
+
+
 def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest):
 
     """
@@ -454,13 +525,17 @@ def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest
     return df_html_output
 
 
-def output_all_to_html(df):
-    f = open("html_output.html", "w")
+def get_html_string(df):
     output = df.to_html(
         render_links=True,
         escape=False,
     )
-    f.write(output)
+    return output
+
+
+def output_all_to_html(html):
+    f = open("html_output.html", "w")
+    f.write(html)
     f.close()
 
 
@@ -480,10 +555,12 @@ def get_matrix_con_con(df, continuous_vars):
 
     # Plot the correlation matrix
     fig9 = px.imshow(corr_matrix, zmin=-1, zmax=1, color_continuous_scale="RdBu")
+    path = "matrix_con_con.html"
     fig9.write_html(
-        file="Plots/matrix_con_con.html",
+        file=f"Plots/{path}",
         include_plotlyjs="cdn",
     )
+    return path
 
 
 def get_matrix_con_cat(df, continuous_vars, categorical_vars):
@@ -501,10 +578,12 @@ def get_matrix_con_cat(df, continuous_vars, categorical_vars):
 
     # Plot the correlation matrix
     fig9 = px.imshow(corr_matrix, zmin=-1, zmax=1, color_continuous_scale="RdBu")
+    path = "matrix_con_cat.html"
     fig9.write_html(
-        file="Plots/matrix_con_cat.html",
+        file=f"Plots/{path}",
         include_plotlyjs="cdn",
     )
+    return path
 
 
 def get_matrix_cat_cat(
@@ -526,35 +605,377 @@ def get_matrix_cat_cat(
 
     # Plot the correlation matrix
     fig9 = px.imshow(corr_matrix, zmin=-1, zmax=1, color_continuous_scale="RdBu")
+    path = "matrix_cat_cat.html"
     fig9.write_html(
-        file="Plots/matrix_cat_cat.html",
+        file=f"Plots/{path}",
         include_plotlyjs="cdn",
     )
+    return path
+
+
+def brute_force_con(df, response, cont_list):
+    return_list = []
+    path_list = []
+    predictor_list = []
+    already_done = []
+    for predictor1 in cont_list:
+        for predictor2 in cont_list:
+            if (
+                predictor1 == predictor2
+                or [predictor2, predictor1] in already_done
+                or [predictor1, predictor2] in already_done
+            ):
+                pass
+            else:
+                bin_count = 10
+                fare_hist, bin_edges_fare = np.histogram(df[predictor2], bins=bin_count)
+
+                # Create 8 bins for the age feature
+                age_hist, bin_edges_age = np.histogram(df[predictor1], bins=bin_count)
+
+                for p in range(0, len(bin_edges_fare) - 1):
+                    bin_edges_fare[p] -= 0.00000001  # so the lower bound is included
+                bin_edges_fare[-1] += 0.00000001
+                for p in range(0, len(bin_edges_age) - 1):
+                    bin_edges_age[p] -= 0.00000001  # so the lower bound is included
+                bin_edges_age[-1] += 0.00000001
+
+                # Calculate the means for each combination of age bin and fare bin
+                grouped = df.groupby(
+                    [
+                        pd.cut(df[predictor1], bins=bin_edges_age),
+                        (pd.cut(df[predictor2], bins=bin_edges_fare)),
+                    ]
+                )
+
+                means_grouped = grouped[response].mean(numeric_only=True)
+
+                # from assignment 4
+                create_folder("Plots/brute_force")
+                count = len(
+                    df.index
+                )  # store length of df in count variable to later calculate mean line
+                amount = sum(df[response])  # store count of each class
+                horizontal = amount / count  # calculate rate for horizontal line
+
+                # get weighted and unweighted mean
+                # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/6/0/10
+                pre_mean_squared = 0
+                wmse = 0
+                # formulas from lecture notes
+                hist_combined = sum(age_hist) + sum(fare_hist)
+                # https://teaching.mrsharky.com/sdsu_fall_2020_lecture07.html#/6/3/8
+                for i in means_grouped:
+                    # if value is na than skip that
+                    # https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
+                    if pd.isna(i):
+                        pass
+                    else:
+                        pre_mean_squared += (i - horizontal) ** 2
+                mean_squared = pre_mean_squared * (1 / (bin_count * bin_count))
+
+                # for loop because we need both hist
+                weight_each_bin = [
+                    (b + c) / hist_combined for b in age_hist for c in fare_hist
+                ]
+
+                # https://www.geeksforgeeks.org/python-iterate-multiple-lists-simultaneously/#
+                no_nan = []
+                for (a, b) in zip(weight_each_bin, list(means_grouped)):
+                    if pd.isna(a) or pd.isna(b):
+                        pass
+                    else:
+                        no_nan.append((a, b))
+
+                for (weight, mean) in no_nan:
+                    wmse += weight * ((mean - horizontal) ** 2)
+
+                # mid has to be used because its float
+                # https://stackoverflow.com/questions/61045348/given-a-list-of-x-number-of-floats-return-a-tuple-of-the-average-of-the-middle
+                index1 = [index[0].mid for index in means_grouped.index]
+                index2 = [index[1].mid for index in means_grouped.index]
+
+                # https://stackoverflow.com/questions/22127771/transforming-a-list-to-a-pivot-table-with-python
+                zipped = pd.DataFrame(
+                    list(zip(index1, index2, list(means_grouped))),
+                    columns=["pred1", "pred2", "mean"],
+                )
+
+                # Reshape the means into a matrix
+                # https://www.geeksforgeeks.org/how-to-create-a-pivot-table-in-python-using-pandas/
+                matrix = pd.pivot_table(
+                    zipped, index="pred1", columns="pred2", values="mean"
+                )
+
+                # https://plotly.com/python-api-reference/generated/plotly.express.imshow.html
+                fig10 = px.imshow(
+                    matrix,
+                    color_continuous_scale="RdBu",
+                    labels=dict(x=predictor2, y=predictor1, color="Mean"),
+                    aspect="auto",
+                )
+
+                path = (
+                    f"Plots/brute_force/matrix_brute_con_{predictor1}_{predictor2}.html"
+                )
+                # Show the plot
+                fig10.write_html(
+                    file=path,
+                    include_plotlyjs="cdn",
+                )
+                already_done.append([predictor2, predictor1])
+
+                path_list.append(path)
+                return_list.append([mean_squared, wmse])
+                predictor_list.append([predictor1, predictor2])
+
+    return return_list, path_list, predictor_list
+
+
+def brute_force_cat(df, response, cat_list):
+    return_list = []
+    path_list = []
+    predictor_list = []
+    create_folder("Plots/brute_force_cat")
+    count = len(
+        df.index
+    )  # store length of df in count variable to later calculate mean line
+    amount = sum(df[response])  # store count of each class
+    horizontal = amount / count  # calculate rate for horizontal line
+    already_done = []
+    for predictor1 in cat_list:
+        for predictor2 in cat_list:
+            if (
+                predictor1 == predictor2
+                or [predictor2, predictor1] in already_done
+                or [predictor1, predictor2] in already_done
+            ):
+                pass
+            else:
+                bin_amount_pred1 = len(np.sort(df[predictor1].unique()))
+                bin_amount_pred2 = len(np.sort(df[predictor2].unique()))
+
+                grouped = df.groupby([df[predictor1], df[predictor2]])
+
+                bin_mean = grouped[response].mean()
+                bin_count = grouped[response].count()
+
+                hist_combined = bin_amount_pred1 * bin_amount_pred2
+                pre_mean_squared = 0
+                for i in bin_mean:
+                    # if value is na than skip that
+                    # https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
+                    # if pd.isna(i):
+                    # pass
+                    # else:
+                    pre_mean_squared += (i - horizontal) ** 2
+                mean_squared = pre_mean_squared * (
+                    1 / (bin_amount_pred1 * bin_amount_pred2)
+                )
+
+                hist_combined = sum(bin_count)
+                weight_each_bin = [b / hist_combined for b in bin_count]
+
+                wmse = 0
+                for (weight, mean) in zip(weight_each_bin, list(bin_mean)):
+                    wmse += weight * ((mean - horizontal) ** 2)
+
+                index1 = [index[1] for index in bin_mean.index]
+                index2 = [index[0] for index in bin_mean.index]
+
+                # https://stackoverflow.com/questions/22127771/transforming-a-list-to-a-pivot-table-with-python
+                zipped = pd.DataFrame(
+                    list(zip(index1, index2, list(bin_mean))),
+                    columns=["pred1", "pred2", "mean"],
+                )
+
+                # Reshape the means into a matrix
+                # https://www.geeksforgeeks.org/how-to-create-a-pivot-table-in-python-using-pandas/
+                matrix = pd.pivot_table(
+                    zipped, index="pred1", columns="pred2", values="mean"
+                )
+
+                # https://plotly.com/python-api-reference/generated/plotly.express.imshow.html
+                fig12 = px.imshow(
+                    matrix,
+                    color_continuous_scale="RdBu",
+                    labels=dict(x=predictor1, y=predictor2, color="Mean"),
+                    aspect="auto",
+                )
+
+                path = f"Plots/brute_force_cat/matrix_brute_cat_{predictor1}_{predictor2}.html"
+                # Show the plot
+                fig12.write_html(
+                    file=path,
+                    include_plotlyjs="cdn",
+                )
+                already_done.append([predictor2, predictor1])
+
+                path_list.append(path)
+                return_list.append([mean_squared, wmse])
+                predictor_list.append([predictor1, predictor2])
+
+    return return_list, path_list, predictor_list
+
+
+def brute_force_cat_cont(df, response, cat_list, cont_list):
+    return_list = []
+    path_list = []
+    predictor_list = []
+    create_folder("Plots/brute_force_cat_cont")
+    count = len(
+        df.index
+    )  # store length of df in count variable to later calculate mean line
+    amount = sum(df[response])  # store count of each class
+    horizontal = amount / count  # calculate rate for horizontal line
+
+    for predictor_cat in cat_list:
+        for predictor_con in cont_list:
+            bin_amount_cat = len(np.sort(df[predictor_cat].unique()))
+            bin_amount_cont = 10
+            bin_total = bin_amount_cat * bin_amount_cont
+
+            hist, bin_edges = np.histogram(df[predictor_con], bins=bin_amount_cont)
+
+            for p in range(0, len(bin_edges) - 1):
+                bin_edges[p] -= 0.00000001  # so the lower bound is included
+            bin_edges[-1] += 0.00000001
+
+            grouped = df.groupby(
+                [(df[predictor_cat]), pd.cut(df[predictor_con], bins=bin_edges)]
+            )
+
+            means_grouped = grouped[response].mean(numeric_only=True)
+            count_grouped = grouped[response].count()
+
+            pre_mean_squared = 0
+            for i in means_grouped:
+                # if value is na than skip that
+                # https://towardsdatascience.com/5-methods-to-check-for-nan-values-in-in-python-3f21ddd17eed
+                if pd.isna(i):
+                    pass
+                else:
+                    pre_mean_squared += (i - horizontal) ** 2
+            mean_squared = pre_mean_squared * (1 / bin_total)
+
+            hist_combined = sum(count_grouped) + sum(hist)
+
+            weight_each_bin = [
+                (b + c) / hist_combined for b in hist for c in count_grouped
+            ]
+
+            wmse = 0
+            no_nan = []
+
+            for (a, b) in zip(weight_each_bin, list(means_grouped)):
+                if pd.isna(a) or pd.isna(b):
+                    pass
+                else:
+                    no_nan.append((a, b))
+
+            for (weight, mean) in no_nan:
+                wmse += weight * ((mean - horizontal) ** 2)
+
+            index1 = [index[1].mid for index in means_grouped.index]
+            index2 = [index[0] for index in means_grouped.index]
+
+            # https://stackoverflow.com/questions/22127771/transforming-a-list-to-a-pivot-table-with-python
+            zipped = pd.DataFrame(
+                list(zip(index1, index2, list(means_grouped))),
+                columns=["pred1", "pred2", "mean"],
+            )
+
+            # Reshape the means into a matrix
+            # https://www.geeksforgeeks.org/how-to-create-a-pivot-table-in-python-using-pandas/
+            matrix = pd.pivot_table(
+                zipped, index="pred1", columns="pred2", values="mean"
+            )
+
+            # https://plotly.com/python-api-reference/generated/plotly.express.imshow.html
+            fig12 = px.imshow(
+                matrix,
+                color_continuous_scale="RdBu",
+                labels=dict(x=predictor_cat, y=predictor_con, color="Mean"),
+                aspect="auto",
+            )
+
+            # Show the plot
+            path = f"Plots/brute_force_cat_cont/matrix_brute_con_cat_{predictor_cat}_{predictor_con}.html"
+            fig12.write_html(
+                file=path,
+                include_plotlyjs="cdn",
+            )
+
+            path_list.append(path)
+            return_list.append([mean_squared, wmse])
+            predictor_list.append([predictor_cat, predictor_con])
+
+    return return_list, path_list, predictor_list
+
+
+def matrix_html(path):
+    # https://cscircles.cemc.uwaterloo.ca/3-comments-literals/
+    header = ["con_con", "con_cat", "cat_cat"]
+    html = ""
+    for i in range(len(path)):
+        html += f"<center><h1>{header[i]}</h1></center>"
+        html += f'<center><iframe src="{path[i]}" width="800"height="600" frameBorder="0"></iframe></center>'
+    return html
 
 
 def main():
-    create_folder("Plots")
+    html = ""
+    curr_path = create_folder("Plots/")
+
     df, predictors, response = get_dataset("titanic")
     re_pr_type, continuous_vars, categorical_vars = get_response_predictor_type(
         df, predictors, response
     )
-    paths = create_plots(re_pr_type, df, predictors, response)
+    categorical_vars.remove(response)
+    # paths = create_plots(re_pr_type, df, predictors, response)
     # p-value & t-score (continuous predictors only) along with it`s plot
-    scores = get_pt_value_score(df, predictors, response, re_pr_type)
+    # scores = get_pt_value_score(df, predictors, response, re_pr_type)
     means, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
-    forest = rand_forest_ranking(df, predictors, response, re_pr_type)
+    # forest = rand_forest_ranking(df, predictors, response, re_pr_type)
 
-    df_html_output = create_output_df(
-        predictors, paths, plots, re_pr_type, scores, means, forest
+    paths_matrix = []
+
+    paths_matrix.append(curr_path + get_matrix_con_con(df, continuous_vars))
+    paths_matrix.append(
+        curr_path + get_matrix_con_cat(df, continuous_vars, categorical_vars)
+    )
+    paths_matrix.append(
+        curr_path + get_matrix_cat_cat(df, categorical_vars, categorical_vars)
     )
 
-    get_matrix_con_con(df, continuous_vars)
+    matrix_paths = matrix_html(paths_matrix)
 
-    get_matrix_con_cat(df, continuous_vars, categorical_vars)
+    scores2, paths2, predictor_list = brute_force_con(df, response, continuous_vars)
 
-    get_matrix_cat_cat(df, categorical_vars, categorical_vars)
+    df_html_output2 = create_output_df_brute_force(
+        predictor_list, paths2, scores2, "cont", "cont"
+    )
+    html += get_html_string(df_html_output2)
 
-    output_all_to_html(df_html_output)
+    scores2, paths2, predictor_list = brute_force_cat(df, response, categorical_vars)
+
+    df_html_output2 = create_output_df_brute_force(
+        predictor_list, paths2, scores2, "cat", "cat"
+    )
+
+    html += get_html_string(df_html_output2)
+
+    scores2, paths2, predictor_list = brute_force_cat_cont(
+        df, response, categorical_vars, continuous_vars
+    )
+
+    df_html_output2 = create_output_df_brute_force(
+        predictor_list, paths2, scores2, "cat", "cont"
+    )
+
+    html += get_html_string(df_html_output2)
+    html += matrix_paths
+    output_all_to_html(html)
 
     print_heading("Program finished successfully")
 
