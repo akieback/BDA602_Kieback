@@ -4,5 +4,6 @@ pip-tools
 pre-commit
 plotly
 scikit-learn
+seaborn
 pyspark
-pyspark-stubs
+statsmodels
