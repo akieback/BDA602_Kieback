@@ -54,20 +54,30 @@ ORDER BY b1.dates, b1.batter
 
 
 CREATE OR REPLACE TABLE base_table_Home AS
-SELECT g.game_id, tc.team_id, tc.homeTeam, tc.Walk, tc.Hit, tc.inning, g.local_date
+SELECT g.game_id, tc.team_id, tc.homeTeam, tc.Walk, tc.Hit, tc.inning, g.local_date, tc.Home_Run, tc.Sac_Fly, tc.Strikeout, tc.Hit_By_Pitch, tc.atBat
 FROM team_batting_counts tc
     INNER JOIN game g ON tc.game_id = g.game_id
-WHERE tc.homeTeam = 1 AND tc.team_id = 5626
+WHERE tc.homeTeam = 1
 GROUP BY tc.game_id, tc.team_id
 ORDER BY tc.game_id
-LIMIT 20
+;
+
+CREATE OR REPLACE TABLE base_table_Away AS
+SELECT g.game_id, tc.team_id, tc.homeTeam, tc.Walk, tc.Hit, tc.inning, g.local_date, tc.Home_Run, tc.Sac_Fly, tc.Strikeout, tc.Hit_By_Pitch, tc.atBat
+FROM team_batting_counts tc
+    INNER JOIN game g ON tc.game_id = g.game_id
+WHERE tc.awayTeam = 1
+GROUP BY tc.game_id, tc.team_id
+ORDER BY tc.game_id
 ;
 
 ALTER TABLE base_table_Home ADD PRIMARY KEY (team_id, game_id);
+ALTER TABLE base_table_Away ADD PRIMARY KEY (team_id, game_id);
+
 
 -- Runtime: 2:10 min
 CREATE OR REPLACE TABLE rolling_Home AS
-SELECT b1.game_id, b1.team_id, (CASE WHEN SUM(b2.inning) > 0 THEN (SUM(b2.Walk) + SUM(b2.Hit)) / SUM(b2.inning) ELSE 0 END) AS WHIP, b2.inning, b2.local_date AS date2, b1.local_date AS dates
+SELECT b1.game_id, b1.team_id, b2.inning, b2.local_date AS date2, b1.local_date AS dates, (CASE WHEN SUM(b2.inning) > 0 THEN (SUM(b2.Walk) + SUM(b2.Hit)) / SUM(b2.inning) ELSE 0 END) AS WHIP, (CASE WHEN SUM(b2.atBat) > 0 THEN (SUM(b2.Hit) - SUM(b2.Home_Run)) / (SUM(b2.atBat) - SUM(b2.Strikeout) - SUM(b2.Home_Run) + SUM(b2.Sac_Fly)) ELSE 0 END) AS BABIP, (CASE WHEN SUM(b2.atBat) > 0 THEN (SUM(b2.Hit) + SUM(b2.Walk) + SUM(b2.Hit_By_Pitch)) / (SUM(b2.atBat) + SUM(b2.Hit_By_Pitch) + SUM(b2.Walk) + SUM(b2.Sac_Fly)) ELSE 0 END) AS OBP -- on-base percentage
 FROM base_table_Home b1
     LEFT JOIN base_table_Home b2 ON b1.team_id = b2.team_id AND b2.local_date > DATE_SUB(b1.local_date, INTERVAL 100 DAY)
         AND b2.local_date < b1.local_date -- must be in join
@@ -76,4 +86,22 @@ GROUP BY b1.game_id
 ORDER BY b1.game_id
 ;
 
--- SELECT * FROM rolling_Home;
+CREATE OR REPLACE TABLE rolling_Away AS
+SELECT b1.game_id, b1.team_id, b2.inning, b2.local_date AS date2, b1.local_date AS dates, (CASE WHEN SUM(b2.inning) > 0 THEN (SUM(b2.Walk) + SUM(b2.Hit)) / SUM(b2.inning) ELSE 0 END) AS WHIP, (CASE WHEN SUM(b2.atBat) > 0 THEN (SUM(b2.Hit) - SUM(b2.Home_Run)) / (SUM(b2.atBat) - SUM(b2.Strikeout) - SUM(b2.Home_Run) + SUM(b2.Sac_Fly)) ELSE 0 END) AS BABIP, (CASE WHEN SUM(b2.atBat) > 0 THEN (SUM(b2.Hit) + SUM(b2.Walk) + SUM(b2.Hit_By_Pitch)) / (SUM(b2.atBat) + SUM(b2.Hit_By_Pitch) + SUM(b2.Walk) + SUM(b2.Sac_Fly)) ELSE 0 END) AS OBP -- on-base percentage
+FROM base_table_Away b1
+    LEFT JOIN base_table_Away b2 ON b1.team_id = b2.team_id AND b2.local_date > DATE_SUB(b1.local_date, INTERVAL 100 DAY)
+        AND b2.local_date < b1.local_date -- must be in join
+--  otherwise the code does not work
+GROUP BY b1.game_id
+ORDER BY b1.game_id
+;
+
+-- SELECT * FROM rolling_Away;
+
+ALTER TABLE rolling_Home ADD PRIMARY KEY (team_id, game_id);
+ALTER TABLE rolling_Away ADD PRIMARY KEY (team_id, game_id);
+
+SELECT ra.game_id, ra.team_id, rh.team_id, (rh.WHIP - ra.WHIP) AS WHIP_DIFF
+FROM rolling_Away ra
+    JOIN rolling_Home rh ON ra.game_id = ra.game_id
+;
