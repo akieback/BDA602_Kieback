@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import statsmodels.api
-from dataset_loader import TestDatasets
+
+# from dataset_loader import TestDatasets
+from mariadb_spark_transformer import get_data
 from plotly import express as px
 from plotly.subplots import make_subplots
 from scipy import stats
@@ -34,19 +36,6 @@ def create_folder(name):  # create a folder for the output plots
     return path
 
 
-def get_dataset(name):
-    """
-    continuous response test_sets : ["mpg", "tips", "diabetes", "breast_cancer"]
-    bool response test_sets : ["titanic", "breast_cancer"]
-    """
-
-    test_datasets = TestDatasets()
-    df, predictors, response = test_datasets.get_test_data_set(data_set_name=name)
-    df.dropna()
-
-    return df, predictors, response
-
-
 def get_response_predictor_type(
     df, predictors, response
 ):  # determine if response is boolean or continuous
@@ -71,6 +60,7 @@ def get_response_predictor_type(
             categorical_vars.append(k)
         else:
             continuous_vars.append(k)
+    # re_pr_type.re.remove(response)
     return re_pr_type, continuous_vars, categorical_vars
 
 
@@ -968,7 +958,7 @@ def main():
     )
     curr_path = create_folder("Plots/")
 
-    df, predictors, response = get_dataset("titanic")
+    df, predictors, response = get_data()
     re_pr_type, continuous_vars, categorical_vars = get_response_predictor_type(
         df, predictors, response
     )
