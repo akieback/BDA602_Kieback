@@ -14,6 +14,7 @@ from plotly import express as px
 from plotly.subplots import make_subplots
 from scipy import stats
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -973,6 +974,11 @@ def build_models(df, predictors, response):
     score_rf = pipeline_rf.score(x_test, y_test)
     print(f"Score: {score_rf}")
 
+    mse = mean_squared_error(y_test, prediction_rf)
+    r2score = r2_score(y_test, prediction_rf)
+    print("mean_squared_error: " + str(mse))
+    print("r2_score: " + str(r2score))
+
     # Decision Tree
     print_heading("Decision Tree with Pipeline")
     pipeline_dt = Pipeline(
@@ -990,6 +996,10 @@ def build_models(df, predictors, response):
     print(f"Predictions: {prediction_dt}")
     score_dt = pipeline_dt.score(x_test, y_test)
     print(f"Score: {score_dt}")
+    mse = mean_squared_error(y_test, prediction_dt)
+    r2score = r2_score(y_test, prediction_dt)
+    print("mean_squared_error: " + str(mse))
+    print("r2_score: " + str(r2score))
 
 
 def main():
