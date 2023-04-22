@@ -990,7 +990,6 @@ def build_models(df, predictors, response):
     print(f"Predictions: {prediction_dt}")
     score_dt = pipeline_dt.score(x_test, y_test)
     print(f"Score: {score_dt}")
-    # print("ACCURACY OF THE MODEL: ", metrics.accuracy_score(y_test, y_pred))
 
 
 def main():
@@ -1012,7 +1011,7 @@ def main():
     )
     categorical_vars.remove(response)
     pathss = create_plots(re_pr_type, df, predictors, response)
-    # p-value & t-score (continuous predictors only) along with it`s plot
+
     scores = get_pt_value_score(df, predictors, response, re_pr_type)
     means, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
     forest = rand_forest_ranking(df, predictors, response, re_pr_type)
@@ -1083,6 +1082,11 @@ def main():
 
     print_heading("Program finished successfully")
 
+
+"""
+    we split the data 80/20 to have enough data to test our model.
+    Both models did very bad... Probably the features are not really good.
+"""
 
 if __name__ == "__main__":
     sys.exit(main())
