@@ -14,7 +14,10 @@ from plotly import express as px
 from plotly.subplots import make_subplots
 from scipy import stats
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 
 def print_heading(title):
@@ -481,7 +484,6 @@ def create_output_df_corr(
 
 
 def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest):
-
     """
     :param predictors: list of all predictors
     :param paths: list of initial plot paths
@@ -544,7 +546,6 @@ def output_all_to_html(html):
 
 
 def get_matrix_con_con(df, continuous_vars):
-
     # Calculate the correlation coefficients
     corr_pair = []
     corr_matrix = pd.DataFrame(columns=continuous_vars, index=continuous_vars)
@@ -945,6 +946,53 @@ def style(html):
     return y
 
 
+def build_models(df, predictors, response):
+    # inspired by hw_01
+    X_orig = df[predictors].values  # set X_origin values
+
+    Y = df[response].values
+
+    # Split https://www.sharpsightlabs.com/blog/scikit-train_test_split/
+    x_train, x_test, y_train, y_test = train_test_split(X_orig, Y, test_size=0.20)
+
+    # Random Forest
+    print_heading("Random Forest With Pipeline")
+    pipeline_rf = Pipeline(
+        [
+            ("StandardScaler", StandardScaler()),
+            ("RandomForest", RandomForestClassifier(random_state=1234)),
+        ]
+    )
+    pipeline_rf.fit(x_train, y_train.ravel())
+
+    probability_rf = pipeline_rf.predict_proba(x_test)
+    prediction_rf = pipeline_rf.predict(x_test)
+    print(f"Probability: {probability_rf}")
+    print(f"Predictions: {prediction_rf}")
+    # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+    score_rf = pipeline_rf.score(x_test, y_test)
+    print(f"Score: {score_rf}")
+
+    # Decision Tree
+    print_heading("Decision Tree with Pipeline")
+    pipeline_dt = Pipeline(
+        [
+            ("StandardScaler", StandardScaler()),
+            ("DecisionTree", DecisionTreeClassifier(random_state=1234)),
+        ]
+    )
+
+    pipeline_dt.fit(x_train, y_train.ravel())
+
+    probability_dt = pipeline_dt.predict_proba(x_test)
+    prediction_dt = pipeline_dt.predict(x_test)
+    print(f"Probability: {probability_dt}")
+    print(f"Predictions: {prediction_dt}")
+    score_dt = pipeline_dt.score(x_test, y_test)
+    print(f"Score: {score_dt}")
+    # print("ACCURACY OF THE MODEL: ", metrics.accuracy_score(y_test, y_pred))
+
+
 def main():
     # https://www.w3schools.com/html/html_table_borders.asp
     # https://www.color-hex.com/popular-colors.php
@@ -1019,6 +1067,8 @@ def main():
     )
     html += add_header("Brute Force Categorical/ Continuous")
     html += get_html_string(df_html_output2)
+
+    build_models(df, predictors, response)
 
     # add graphs to html in iframe
     html += matrix_paths
