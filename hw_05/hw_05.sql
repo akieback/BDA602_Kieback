@@ -1,3 +1,5 @@
+USE baseball;
+
 CREATE OR REPLACE TABLE base_table_Home AS
 SELECT tc.game_id, tc.team_id, tc.homeTeam, tc.Walk, tc.Hit, tc.inning, g.local_date, tc.Strikeout, tc.atBat, tc.Sac_Fly
     , tc.Home_Run, tc.toBase, tc.Hit_By_Pitch, tc.win

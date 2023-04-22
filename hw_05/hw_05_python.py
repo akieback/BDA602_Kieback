@@ -512,7 +512,7 @@ def create_output_df(predictors, paths, plots, re_pr_type, scores, means, forest
 
     i = 0
     link1 = turn_path_to_link(paths)
-    link2 = turn_path_to_link(plots)
+    link2 = turn_path_to_link(plots.values())
     for predictor in predictors:
         # https://www.geeksforgeeks.org/how-to-add-one-row-in-an-existing-pandas-dataframe/
         df_html_output.loc[len(df_html_output.index)] = [
@@ -1011,11 +1011,17 @@ def main():
         df, predictors, response
     )
     categorical_vars.remove(response)
-    # paths = create_plots(re_pr_type, df, predictors, response)
+    pathss = create_plots(re_pr_type, df, predictors, response)
     # p-value & t-score (continuous predictors only) along with it`s plot
-    # scores = get_pt_value_score(df, predictors, response, re_pr_type)
-    _, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
-    # forest = rand_forest_ranking(df, predictors, response, re_pr_type)
+    scores = get_pt_value_score(df, predictors, response, re_pr_type)
+    means, plots = diff_mean_response(df, predictors, response, re_pr_type, 10)
+    forest = rand_forest_ranking(df, predictors, response, re_pr_type)
+
+    df_html_output = create_output_df(
+        predictors, pathss, plots, re_pr_type, scores, means, forest
+    )
+    html += add_header("Feature scores")
+    html += get_html_string(df_html_output)
 
     paths_matrix = []
 

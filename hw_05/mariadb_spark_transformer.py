@@ -103,6 +103,7 @@ def get_data():
         df_Final.toPandas()
     )  # https://sparkbyexamples.com/pandas/convert-pyspark-dataframe-to-pandas/
     response = "HomeTeamWins"
+    df_Final2.dropna()
     return df_Final2, predictors, response
 
 
