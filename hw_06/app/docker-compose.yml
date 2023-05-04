@@ -12,22 +12,17 @@ services:
     volumes:
       - /Users/adriankieback/Documents/SDSU/2.Semester/Machine_Learning_BDA_602/Github/BDA602_Kieback/hw_06/app:/config
     ports:
-      - 3307:3306
+      - 3311:3306
     restart: unless-stopped
-
-  hw_06:
-    image: mysql:latest
-    depends_on:
-      - mariadb
-    environment:
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_DATABASE=baseball
+  db_client:
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
-      - ./baseball.sql:/docker-entrypoint-initdb.d/baseball.sql
-      - ./hw_05.sql:/docker-entrypoint-initdb.d/hw_05.sql
-    command:
-      [
-        "sh",
-        "-c",
-        "sleep 10 && until mysql -uroot -proot -hmariadb -e 'SELECT 1'; do sleep 1; done; mysql -uroot -proot -hmariadb baseball < /docker-entrypoint-initdb.d/baseball.sql && mysql -uroot -proot -hmariadb baseball < /docker-entrypoint-initdb.d/hw_05.sql",
-      ]
+      - /Users/adriankieback/Documents/SDSU/2.Semester/Machine_Learning_BDA_602/Github/BDA602_Kieback/hw_06/app
+    ports:
+      - 3310:3306
+
+      #assign port 3307:3307
+    #     volumes:
+    #     /Users/adriankieback/Documents/SDSU/2.Semester/Machine_Learning_BDA_602/Github/BDA602_Kieback/hw_06/app:/config
