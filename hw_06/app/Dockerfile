@@ -1,0 +1,5 @@
+FROM python:3.6.9
+
+ENV APP_HOME /app
+WORKDIR $APP_HOME
+
