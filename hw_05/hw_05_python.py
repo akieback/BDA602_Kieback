@@ -14,7 +14,7 @@ from plotly import express as px
 from plotly.subplots import make_subplots
 from scipy import stats
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import confusion_matrix, mean_squared_error, r2_score, roc_curve
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -179,8 +179,12 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
             if len(df[predictor].unique()) <= 10:
                 bins_amount = len(df[predictor].unique())
 
+            bins = np.percentile(df[predictor], [5, 95])
+
+            # Create the histogram using the custom bin edges
+
             hist, bin_edges = np.histogram(
-                df[predictor], bins=bins_amount
+                df[predictor], bins=np.linspace(bins[0], bins[1], 10)
             )  # set number of bins
             bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])  # calculate bin center
             for p in range(0, len(bin_edges) - 1):
@@ -237,7 +241,7 @@ def diff_mean_response(df, predictors, response, re_pr_type, bins_amount):
 
             fig7.add_trace(
                 go.Scatter(
-                    x=[min(df[predictor]), max(df[predictor])],
+                    x=[bin_centers[0], bin_centers[-1]],
                     y=[horizontal, horizontal],
                     name="µpop",
                 ),
@@ -979,6 +983,42 @@ def build_models(df, predictors, response):
     print("mean_squared_error: " + str(mse))
     print("r2_score: " + str(r2score))
 
+    # https://www.projectpro.io/recipes/plot-roc-curve-in-python
+    y_score = pipeline_rf.predict_proba(x_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_score)
+
+    # https://mlhive.com/2023/02/create-heatmap-and-confusion-matrix-using-plotly-in-python
+    cm = confusion_matrix(y_test, prediction_rf)
+    heatmap = go.Heatmap(z=cm, x=["0", "1"], y=["0", "1"], colorscale="Blues")
+
+    # create the layout
+    layout = go.Layout(title="Confusion Metrix")
+
+    # create the figure
+    fig = go.Figure(data=[heatmap], layout=layout)
+
+    # show the figure
+    fig.show()
+
+    roc_df = pd.DataFrame({"fpr": fpr, "tpr": tpr, "thresholds": thresholds})
+    fig = px.line(
+        roc_df, x="fpr", y="tpr", hover_data=["thresholds"], title="ROC Curve"
+    )
+    # Add the diagonal reference line
+    fig.update_layout(
+        shapes=[
+            dict(
+                type="line",
+                x0=0,
+                y0=0,
+                x1=1,
+                y1=1,
+                line=dict(color="gray", dash="dash"),
+            )
+        ]
+    )
+    fig.show()
+
     # Decision Tree
     print_heading("Decision Tree with Pipeline")
     pipeline_dt = Pipeline(
@@ -1000,6 +1040,41 @@ def build_models(df, predictors, response):
     r2score = r2_score(y_test, prediction_dt)
     print("mean_squared_error: " + str(mse))
     print("r2_score: " + str(r2score))
+
+    y_score = pipeline_dt.predict_proba(x_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_score)
+
+    # https://mlhive.com/2023/02/create-heatmap-and-confusion-matrix-using-plotly-in-python
+    cm = confusion_matrix(y_test, prediction_dt)
+    heatmap = go.Heatmap(z=cm, x=["0", "1"], y=["0", "1"], colorscale="Blues")
+
+    # create the layout
+    layout = go.Layout(title="Confusion Metrix")
+
+    # create the figure
+    fig = go.Figure(data=[heatmap], layout=layout)
+
+    # show the figure
+    fig.show()
+
+    roc_df = pd.DataFrame({"fpr": fpr, "tpr": tpr, "thresholds": thresholds})
+    fig = px.line(
+        roc_df, x="fpr", y="tpr", hover_data=["thresholds"], title="ROC Curve"
+    )
+    # Add the diagonal reference line
+    fig.update_layout(
+        shapes=[
+            dict(
+                type="line",
+                x0=0,
+                y0=0,
+                x1=1,
+                y1=1,
+                line=dict(color="gray", dash="dash"),
+            )
+        ]
+    )
+    fig.show()
 
 
 def main():

@@ -10,7 +10,7 @@ services:
       - MYSQL_ROOT_PASSWORD=root
       - TZ=America/Los_Angeles
     volumes:
-      - /Users/adriankieback/Documents/SDSU/2.Semester/Machine_Learning_BDA_602/Github/BDA602_Kieback/hw_06/app:/config
+      - ./databases:/config
     ports:
       - 3311:3306
     restart: unless-stopped
@@ -19,7 +19,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /Users/adriankieback/Documents/SDSU/2.Semester/Machine_Learning_BDA_602/Github/BDA602_Kieback/hw_06/app
+      - ./results:/app/Plots
     ports:
       - 3310:3306
 
