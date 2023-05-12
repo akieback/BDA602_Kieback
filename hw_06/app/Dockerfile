@@ -22,3 +22,6 @@ COPY test.sh /
 # x for execution rights
 RUN chmod +x /test.sh
 ENTRYPOINT ["/test.sh"]
+
+COPY
+RUN python3 hw_05_python.py
