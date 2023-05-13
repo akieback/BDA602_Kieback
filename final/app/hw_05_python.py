@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import statsmodels.api
+from _decimal import Decimal
 
 # from dataset_loader import TestDatasets
 from mariadb_spark_transformer1 import get_data
@@ -965,6 +966,14 @@ def build_models(df, predictors, response):
 
     # Split https://www.sharpsightlabs.com/blog/scikit-train_test_split/
     x_train, x_test, y_train, y_test = train_test_split(X_orig, Y, test_size=0.20)
+    # x_train = pd.DataFrame(x_train, columns=predictors)
+    # x_train['Class'] = y_train
+
+    # https://stackoverflow.com/questions/29763620/how-to-select-all-columns-except-one-in-pandas
+    """df = Remove_Outliers(x_train, 'HomeTeamWins')
+
+    x_train = df.loc[:, df.columns != 'HomeTeamWins']
+    y_train = df['HomeTeamWins']"""
 
     # Random Forest
     print_heading("Random Forest With Pipeline")
@@ -1083,6 +1092,186 @@ def build_models(df, predictors, response):
     fig.show()
 
 
+def get_elo(df, predictors):
+    predictors.append("Elo")
+    df["Elo"] = ""  # create an empty column first
+    elo = {}
+    for index, row in df.iterrows():
+        home_team = row["Home"]
+        away_team = row["Away"]
+        home_team_win = row["HomeTeamWins"]
+        if home_team in elo and away_team in elo:
+            elo_home = elo[home_team]["elo"]
+            elo_away = elo[away_team]["elo"]
+            elo_diff = elo_home - elo_away
+            df.loc[index, "Elo"] = int(elo_diff)
+            if home_team_win == 1:
+                new_home, new_away = calc_elo(elo_home, elo_away, 1, 0, 0)
+                elo[home_team]["elo"] = new_home
+                elo[away_team]["elo"] = new_away
+            else:
+                new_home, new_away = calc_elo(elo_home, elo_away, 0, 0, 0)
+                elo[home_team]["elo"] = new_home
+                elo[away_team]["elo"] = new_away
+        elif home_team in elo and away_team not in elo:
+            elo_home = elo[home_team]["elo"]
+            elo_away = 1500
+            elo_diff = elo_home - elo_away
+            df.loc[index, "Elo"] = int(elo_diff)
+            if home_team_win == 1:
+                new_home, new_away = calc_elo(elo_home, elo_away, 1, 0, 0)
+                elo[home_team]["elo"] = new_home
+                elo[away_team] = {"elo": new_away}
+            else:
+                new_home, new_away = calc_elo(elo_home, elo_away, 0, 0, 0)
+                elo[home_team]["elo"] = new_home
+                elo[away_team] = {"elo": new_away}
+        elif home_team not in elo and away_team in elo:
+            elo_home = 1500
+            elo_away = elo[away_team]["elo"]
+            elo_diff = elo_home - elo_away
+            df.loc[index, "Elo"] = int(elo_diff)
+            if home_team_win == 1:
+                new_home, new_away = calc_elo(elo_home, elo_away, 1, 0, 0)
+                elo[home_team] = {"elo": new_home}
+                elo[away_team]["elo"] = new_away
+            else:
+                new_home, new_away = calc_elo(elo_home, elo_away, 0, 0, 0)
+                elo[home_team] = {"elo": new_home}
+                elo[away_team]["elo"] = new_away
+        else:
+            elo[home_team] = {"elo": 1500}
+            elo[away_team] = {"elo": 1500}
+
+            df.loc[index, "Elo"] = 0
+    df["Elo"] = df["Elo"].astype(float)
+    print_heading("done elo")
+    return df, predictors
+
+
+def get_elo_with_score(df, predictors):
+    predictors.append("Elo_with_score")
+    df["Elo_with_score"] = ""  # create an empty column first
+    elo_score = {}
+    for index, row in df.iterrows():
+        home_team = row["Home"]
+        away_team = row["Away"]
+        home_score = row["finalScore"]
+        away_score = row["opponent_finalScore"]
+        if home_team in elo_score and away_team in elo_score:
+            elo_home = elo_score[home_team]["elo"]
+            elo_away = elo_score[away_team]["elo"]
+            elo_diff = elo_home - elo_away
+            df.loc[index, "Elo_with_score"] = int(elo_diff)
+            new_home, new_away = calc_elo(
+                elo_home, elo_away, 1, home_score, away_score, with_score=True
+            )
+            elo_score[home_team]["elo"] = new_home
+            elo_score[away_team]["elo"] = new_away
+        elif home_team in elo_score and away_team not in elo_score:
+            elo_home = elo_score[home_team]["elo"]
+            elo_away = 1500
+            elo_diff = elo_home - elo_away
+            df.loc[index, "Elo_with_score"] = int(elo_diff)
+            new_home, new_away = calc_elo(
+                elo_home, elo_away, 1, home_score, away_score, with_score=True
+            )
+            elo_score[away_team] = {"elo": new_away}
+            elo_score[home_team]["elo"] = new_home
+        elif home_team not in elo_score and away_team in elo_score:
+            elo_home = 1500
+            elo_away = elo_score[away_team]["elo"]
+            elo_diff = elo_home - elo_away
+            df.loc[index, "Elo_with_score"] = int(elo_diff)
+            new_home, new_away = calc_elo(
+                elo_home, elo_away, 1, home_score, away_score, with_score=True
+            )
+            elo_score[home_team] = {"elo": new_home}
+            elo_score[away_team]["elo"] = new_away
+        else:
+            elo_score[home_team] = {"elo": 1500}
+            elo_score[away_team] = {"elo": 1500}
+
+            df.loc[index, "Elo_with_score"] = 0
+
+    df["Elo_with_score"] = df["Elo_with_score"].astype(float)
+    print_heading("done elo_score")
+    return df, predictors
+
+
+def calc_elo(elo_home, elo_away, h_win, home_score, away_score, with_score=False):
+    K = 32
+    if with_score:
+        expected_score_home = Decimal(
+            (1 / (1 + Decimal(10 ** Decimal((Decimal((elo_away - elo_home)) / 400)))))
+        )  # so many decimal otherwise overflow
+        expected_score_away = Decimal(
+            (1 / (1 + Decimal(10 ** Decimal((Decimal((elo_home - elo_away)) / 400)))))
+        )
+        change_home = K * (home_score - expected_score_home)
+        change_away = K * (away_score - expected_score_away)
+        new_home = int(elo_home + change_home)
+        new_away = int(elo_away + change_away)
+
+        return new_home, new_away
+    else:
+        if h_win == 1:
+            expected_score_home = 1 / (1 + 10 ** ((elo_away - elo_home) / 400))
+            expected_score_away = 1 / (1 + 10 ** ((elo_home - elo_away) / 400))
+            change_home = K * (1 - expected_score_home)
+            change_away = K * (0 - expected_score_away)
+            new_home = int(elo_home + change_home)
+            new_away = int(elo_away + change_away)
+
+            return new_home, new_away
+        else:
+            expected_score_home = 1 / (1 + 10 ** ((elo_away - elo_home) / 400))
+            expected_score_away = 1 / (1 + 10 ** ((elo_home - elo_away) / 400))
+            change_home = K * (0 - expected_score_home)
+            change_away = K * (1 - expected_score_away)
+            new_home = int(elo_home + change_home)
+            new_away = int(elo_away + change_away)
+
+            return new_home, new_away
+
+
+def Remove_Outliers(df, features):
+    # https://www.kaggle.com/code/abdilatifssou/analyse-and-cleaning-the-data-before-we-predict
+
+    Positive_df = df[df["HomeTeamWins"] == 1]  # 1
+    Negative_df = df[df["HomeTeamWins"] == 0]  # 0
+    before = df.shape[0]
+
+    for n in features:
+        desc1 = Positive_df[n].describe()
+        lower_bound1 = desc1[4] - 1.5 * (desc1[6] - desc1[4])
+        upper_bound1 = desc1[6] + 1.5 * (desc1[6] - desc1[4])
+
+        desc0 = Negative_df[n].describe()
+        lower_bound0 = desc0[4] - 1.5 * (desc0[6] - desc0[4])
+        upper_bound0 = desc0[6] + 1.5 * (desc0[6] - desc0[4])
+
+        df = df.drop(
+            df[
+                (
+                    ((df[n] < lower_bound1) | (df[n] > upper_bound1))
+                    & (df["HomeTeamWins"] == 1)
+                )
+                | (
+                    ((df[n] < lower_bound0) | (df[n] > upper_bound0))
+                    & (df["HomeTeamWins"] == 0)
+                )
+            ].index
+        )
+
+    after = df.shape[0]
+    print("number of deleted outiers :", before - after)
+
+    # https: // pandas.pydata.org / docs / reference / api / pandas.DataFrame.reset_index.html
+    df = df.reset_index(drop=True)
+    return df
+
+
 def main():
     # https://www.w3schools.com/html/html_table_borders.asp
     # https://www.color-hex.com/popular-colors.php
@@ -1098,6 +1287,9 @@ def main():
     curr_path = create_folder("results/Plots/")
 
     df, predictors, response = get_data()
+    df = Remove_Outliers(df, predictors)
+    df, predictors = get_elo(df, predictors)
+    df, predictors = get_elo_with_score(df, predictors)
     re_pr_type, continuous_vars, categorical_vars = get_response_predictor_type(
         df, predictors, response
     )

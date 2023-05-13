@@ -24,7 +24,14 @@ def get_data():
 
     for col in df_Final.columns:
         predictors.append(col)
-    non_predictors = ["game_id", "Home", "Away", "HomeTeamWins"]
+    non_predictors = [
+        "game_id",
+        "Home",
+        "Away",
+        "HomeTeamWins",
+        "finalScore",
+        "opponent_finalScore",
+    ]
     for drop in non_predictors:
         predictors.remove(drop)
     # https://sparkbyexamples.com/pandas/convert-pyspark-dataframe-to-pandas/
