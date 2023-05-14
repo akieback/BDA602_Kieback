@@ -567,7 +567,7 @@ def get_html_string(df):
 
 
 def output_all_to_html(html):
-    f = open("html_output.html", "w")
+    f = open("results/html_output.html", "w")
     f.write(html)
     f.close()
 
@@ -1381,20 +1381,31 @@ def main():
     # https://www.w3schools.com/html/html_table_borders.asp
     # https://www.color-hex.com/popular-colors.php
     html = (
-        "<!DOCTYPE html><html><head><title>Midterm</title>"
+        "<!DOCTYPE html><html><head><title>Final</title>"
         "<style> "
         "table, th, td { border: 1px solid white;"
         "border-collapse: collapse;} th, td { "
         "background-color: #81d8d0;} </style> </head> <body>"
-        "<center><h1>Midterm Adrian Kieback</h1></center>"
+        "<center><h1>Final Adrian Kieback</h1></center>"
     )
     create_folder("results/")
     curr_path = create_folder("results/Plots/")
 
     df, predictors, response = get_data()
+    df = Remove_Outliers(df, predictors)
     df, predictors = get_elo(df, predictors)
     df, predictors = get_elo_with_score(df, predictors)
-    df = Remove_Outliers(df, predictors)
+    """ df = df.drop('Difference_WHIP', axis=1)
+    df = df.drop('Difference_BABIP', axis=1)
+    df = df.drop('Difference_OBP', axis=1)
+    df = df.drop('Difference_PFR', axis=1)
+    df = df.drop('Difference_TOB', axis=1)
+    predictors.remove("Difference_WHIP")
+    predictors.remove("Difference_BABIP")
+    predictors.remove("Difference_OBP")
+    predictors.remove("Difference_PFR")
+    predictors.remove("Difference_TOB")
+    """
     re_pr_type, continuous_vars, categorical_vars = get_response_predictor_type(
         df, predictors, response
     )
