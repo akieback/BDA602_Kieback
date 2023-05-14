@@ -6,3 +6,6 @@ plotly
 scikit-learn
 pyspark
 pyspark-stubs
+seaborn
+statsmodels
+mariadb

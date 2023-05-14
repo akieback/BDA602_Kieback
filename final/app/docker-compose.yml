@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  mariadb:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - TZ=America/Los_Angeles
+    volumes:
+      - ./app:/config
+    ports:
+      - 3311:3306
+    restart: unless-stopped
+
+  db_client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    depends_on:
+      - mariadb

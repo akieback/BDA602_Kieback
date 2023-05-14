@@ -1,0 +1,28 @@
+version: "3.9"
+services:
+  mariadb:
+    image: lscr.io/linuxserver/mariadb:latest
+    container_name: mariadb
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - MYSQL_ROOT_PASSWORD=root
+      - TZ=America/Los_Angeles
+    volumes:
+      - ./databases:/config
+    ports:
+      - 3311:3306
+    restart: unless-stopped
+  db_client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./results:/app/Plots
+    ports:
+      - 3310:3306
+
+      #assign port 3307:3307
+    #     volumes:
+    #     /Users/adriankieback/Documents/SDSU/2.Semester/Machine_Learning_BDA_602/Github/BDA602_Kieback/hw_06/app:/config

@@ -98,6 +98,8 @@ six==1.16.0
     # via
     #   patsy
     #   python-dateutil
+sqlalchemy==1.4.39
+    # via -r requirements.in
 statsmodels==0.13.5
     # via -r requirements.in
 tenacity==8.1.0
