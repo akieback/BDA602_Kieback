@@ -72,4 +72,62 @@ as described above. Then I created a second ranking, which also takes into accou
 After I have created the elo rankings, I clean my data. I do this using the interquartile range (IQR) as
 a principle. It is defined as the difference between the 75th percentile and the 25th percentile of a data set.
 
+## Feature engineering
+
 Now lets get to the feature engineering.
+
+I have 20+ features. First of all we can look at the created HTML table. As you can see in the table, if you look at the p-value column,
+the two elo features are actually by far the best. They are not only the best at the p-value, but also at the t-score and the random forest score.
+Another feature that is surprisingly relatively good is Difference_Total_average.
+
+![img_2.png](img_2.png)
+
+If we than dig even deeper and take a look at the Difference Mean of response plot, we can see that there is a definite up trend there:
+
+![img_3.png](img_3.png)
+
+Even though the second bin is kind of an outlier, the feature peforms way better than all the others. There are ways to on how we could optimize
+that feature but due to time restrictions we won't do that.
+
+### Correlations
+
+![img_4.png](img_4.png)
+The next step to lookout for correlations among our features. And no surprise we found several features that correlate to each other.
+For example the three features WHIP, BABIP, OBP are all very related to each other. Thats the reason it would make sense to chose one of the features
+and kick the other ones out. Surprisingly the Total_Average feature is correlated to WHIP. And this is not the best case scenario
+for us because now we need to kick out one of our top 5 features. Otherwise we only had one more high correlation
+and that was between K9_Pitcher and PFR. After looking at our scores in the table above I decided to remove:
+
+- PFR
+- WHIP
+- BABIP
+- OBP
+- TOB
+
+I also created Brute force features between all of them. But since non of them was better or close to
+my elo features I didnt implement them.
+
+## Model
+
+Now that the features have been examined, we can move on to the actual models. I used 6 different models for this project:
+
+- Random Forest
+- Decision Tree
+- Logistic Regression
+- Support Vector Machine
+- Gradient Boosting
+- K Nearest-Neighbor
+
+![img_5.png](img_5.png)
+
+To evaluate these, the program outputs an ROC curve for each model and saves a file in which all models are
+displayed in a graph. Additionally the AUC value is calculated.
+It was found that the logistic regression model and the gradient boosting model are the best, with the support
+vector machine model being close to the other two.
+
+But in this case even more interesting than the ROC curve was the cross validation. Because here we saw immediately that even if
+SVM isnt as good as GBoost in the ROC it has a way smaller variance than the GBoost model.
+
+![img_6.png](img_6.png)
+
+With that being said the Logistic Regression model was still the best out of all of them.
