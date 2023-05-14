@@ -1,5 +1,7 @@
 # PythonProject
 
+## Adrian Kieback 828576392
+
 # Setup for developement:
 
 - Setup a python 3.x venv (usually in `.venv`)
@@ -104,6 +106,12 @@ and that was between K9_Pitcher and PFR. After looking at our scores in the tabl
 - OBP
 - TOB
 
+After removing those features i ran my models again but unfortunately the didnt improve. In fact, they got worse.
+
+![img_7.png](img_7.png)
+
+The Logistic Regression went down to AUC=.55 .
+That .02 worse than the Logistic Regression model before removing the features. Thats why i let them in the df.
 I also created Brute force features between all of them. But since non of them was better or close to
 my elo features I didnt implement them.
 
@@ -130,4 +138,7 @@ SVM isnt as good as GBoost in the ROC it has a way smaller variance than the GBo
 
 ![img_6.png](img_6.png)
 
-With that being said the Logistic Regression model was still the best out of all of them.
+With that being said the Logistic Regression model was still the best out of all of them. Not only in the cross validation it was better,
+it was also better in mean_squared_error.
+
+In a nutshell there are more ways to get even better results, but due to the time I focused on 2-3 really good features (the 2 elo features).
