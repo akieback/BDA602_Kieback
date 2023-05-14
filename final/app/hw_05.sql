@@ -2,7 +2,9 @@ USE baseball;
 
 CREATE OR REPLACE TABLE base_table_Home AS
 SELECT tc.game_id, tc.team_id, tc.homeTeam, tc.Walk, tc.Hit, tc.inning, g.local_date, tc.Strikeout, tc.atBat, tc.Sac_Fly
-    , tc.Home_Run, tc.toBase, tc.Hit_By_Pitch, tc.win, g.stadium_id, tc.finalScore, tc.opponent_finalScore
+    , tc.Home_Run, tc.toBase, tc.Hit_By_Pitch, tc.win, g.stadium_id, tc.finalScore, tc.opponent_finalScore, tc.caughtStealing2B
+    , tc.caughtStealing3B, tc.caughtStealingHome, tc.Grounded_Into_DP, tc.stolenBase2B, tc.stolenBase3B, tc.stolenBaseHome
+    , UNIX_TIMESTAMP(g.local_date) AS DateToNumber
 FROM team_batting_counts tc
     INNER JOIN game g ON tc.game_id = g.game_id
 WHERE tc.homeTeam = 1
@@ -12,7 +14,9 @@ ORDER BY tc.game_id
 
 CREATE OR REPLACE TABLE base_table_Away AS
 SELECT g.game_id, tc.team_id, tc.homeTeam, tc.Walk, tc.Hit, tc.inning, g.local_date, tc.Strikeout, tc.atBat, tc.Sac_Fly
-    , tc.Home_Run, tc.toBase, tc.Hit_By_Pitch
+    , tc.Home_Run, tc.toBase, tc.Hit_By_Pitch, tc.caughtStealing2B
+    , tc.caughtStealing3B, tc.caughtStealingHome, tc.Grounded_Into_DP, tc.stolenBase2B, tc.stolenBase3B, tc.stolenBaseHome
+    , UNIX_TIMESTAMP(g.local_date) AS DateToNumber
 FROM team_batting_counts tc
     INNER JOIN game g ON tc.game_id = g.game_id
 WHERE tc.awayTeam = 1
@@ -25,7 +29,8 @@ ALTER TABLE base_table_Away ADD PRIMARY KEY (team_id, game_id);
 
 
 CREATE OR REPLACE TABLE rolling_Home AS
-SELECT b1.game_id, b1.team_id, b1.win, b1.stadium_id, b1.finalScore, b1.opponent_finalScore
+SELECT b1.game_id, b1.team_id, b1.win, b1.opponent_finalScore, b1.stadium_id, b1.finalScore
+    , (CASE WHEN b1.DateToNumber > 0 THEN b1.DateToNumber ELSE 0 END) AS DateToNumber
     , (CASE WHEN SUM(b2.inning) > 0 THEN (SUM(b2.Walk) + SUM(b2.Hit)) / SUM(b2.inning) ELSE 0 END) AS WHIP, b2.inning, b2.local_date AS date2, b1.local_date AS date1
     , (CASE WHEN SUM(b2.atBat) > 0 THEN (SUM(b2.Hit) - SUM(b2.Home_Run)) / (SUM(b2.atBat) - SUM(b2.Strikeout) - b2.Home_Run + SUM(b2.Sac_Fly)) ELSE 0 END) AS BABIP
     , (CASE WHEN SUM(b2.atBat) > 0 THEN (SUM(b2.Hit) + SUM(b2.Walk) * b2.toBase) / (SUM(b2.atBat) + SUM(b2.Walk)) ELSE 0 END) AS RC
@@ -33,6 +38,10 @@ SELECT b1.game_id, b1.team_id, b1.win, b1.stadium_id, b1.finalScore, b1.opponent
     , (CASE WHEN SUM(b2.inning) > 0 THEN SUM(b2.Hit) / (SUM(b2.inning)) ELSE 0 END) AS HIP
     , (CASE WHEN SUM(b2.Home_Run) > 0 THEN SUM(b2.atBat) / (SUM(b2.Home_Run)) ELSE 0 END) AS AB_HR
     , (CASE WHEN SUM(b2.Strikeout) > 0 THEN SUM(b2.Walk) / (SUM(b2.Strikeout)) ELSE 0 END) AS BB_K
+    , (CASE WHEN SUM(b2.Walk) > 0 THEN (SUM(b2.Walk) + SUM(b2.Hit) + SUM(b2.Hit_By_Pitch)) ELSE 0 END) AS TOB
+    , (CASE WHEN (SUM(b2.atBat) - SUM(b2.Hit) + (SUM(b2.caughtStealing2B) + SUM(b2.caughtStealing3B) + SUM(b2.caughtStealingHome)) + b2.Grounded_Into_DP) > 0
+        THEN ((SUM(b2.toBase) + SUM(b2.Hit_By_Pitch) + SUM(b2.Walk) + (SUM(b2.stolenBase2B) + SUM(b2.stolenBase3B) + SUM(b2.stolenBaseHome)))
+            / (SUM(b2.atBat) - SUM(b2.Hit) + (SUM(b2.caughtStealing2B) + SUM(b2.caughtStealing3B) + SUM(b2.caughtStealingHome)) + b2.Grounded_Into_DP)) ELSE 0 END) AS Total_average
 FROM base_table_Home b1
     LEFT JOIN base_table_Home b2 ON b1.team_id = b2.team_id AND b2.local_date > DATE_SUB(b1.local_date, INTERVAL 100 DAY)
         AND b2.local_date < b1.local_date
@@ -48,6 +57,11 @@ SELECT b1.game_id, b1.team_id, (CASE WHEN SUM(b2.inning) > 0 THEN (SUM(b2.Walk) 
     , (CASE WHEN SUM(b2.inning) > 0 THEN SUM(b2.Hit) / (SUM(b2.inning)) ELSE 0 END) AS HIP
     , (CASE WHEN SUM(b2.Home_Run) > 0 THEN SUM(b2.atBat) / (SUM(b2.Home_Run)) ELSE 0 END) AS AB_HR
     , (CASE WHEN SUM(b2.Strikeout) > 0 THEN SUM(b2.Walk) / (SUM(b2.Strikeout)) ELSE 0 END) AS BB_K
+    , (CASE WHEN SUM(b2.Walk) > 0 THEN (SUM(b2.Walk) + SUM(b2.Hit) + SUM(b2.Hit_By_Pitch)) ELSE 0 END) AS TOB
+    -- https://en.wikipedia.org/wiki/Total_average
+    , (CASE WHEN (SUM(b2.atBat) - SUM(b2.Hit) + (SUM(b2.caughtStealing2B) + SUM(b2.caughtStealing3B) + SUM(b2.caughtStealingHome)) + b2.Grounded_Into_DP) > 0
+        THEN ((SUM(b2.toBase) + SUM(b2.Hit_By_Pitch) + SUM(b2.Walk) + (SUM(b2.stolenBase2B) + SUM(b2.stolenBase3B) + SUM(b2.stolenBaseHome)))
+            / (SUM(b2.atBat) - SUM(b2.Hit) + (SUM(b2.caughtStealing2B) + SUM(b2.caughtStealing3B) + SUM(b2.caughtStealingHome)) + b2.Grounded_Into_DP)) ELSE 0 END) AS Total_average
 FROM base_table_Away b1
     LEFT JOIN base_table_Away b2 ON b1.team_id = b2.team_id AND b2.local_date > DATE_SUB(b1.local_date, INTERVAL 100 DAY)
         AND b2.local_date < b1.local_date
@@ -125,6 +139,9 @@ SELECT rh.game_id, rh.team_id AS Home, ra.team_id AS Away, rh.win AS HomeTeamWin
     , (rh.RC - ra.RC) AS Difference_RC
     , (rh.AB_HR - ra.AB_HR) AS Difference_AB_HR
     , (rh.BB_K - ra.BB_K) AS Difference_BB_K
+    , (rh.TOB - ra.TOB) AS Difference_TOB
+    , (rh.Total_average - ra.Total_average) AS Difference_Total_average
+    , rh.DateToNumber
 FROM rolling_Home rh
     JOIN rolling_Away ra ON rh.game_id = ra.game_id
 GROUP BY ra.game_id
@@ -147,10 +164,11 @@ ALTER TABLE final_editable_pitcher ADD PRIMARY KEY (game_id);
 -- ------------------------------
 -- Join both table to have stats of team and pitcher in one table
 CREATE OR REPLACE TABLE final_Stats AS
-SELECT rh.game_id, rh.HomeTeamWins, rh.Home, rh.stadium_id, rh.Away, rh.Difference_WHIP, rh.Difference_BABIP, rh.Difference_OBP, rh.Difference_RC, rh.Difference_AB_HR
+SELECT rh.game_id, rh.HomeTeamWins, rh.Home, rh.DateToNumber, rh.stadium_id, rh.Away, rh.Difference_WHIP, rh.Difference_BABIP, rh.Difference_OBP
+    , rh.Difference_RC, rh.Difference_AB_HR
     , rh.Difference_BB_K
     , ra.Difference_K9_pitcher, ra.Difference_BB_9IP, ra.Difference_PFR, ra.Difference_Dice
-    , rh.finalScore, rh.opponent_finalScore
+    , rh.finalScore, rh.opponent_finalScore, rh.Difference_TOB, rh.Difference_Total_average
 FROM final_editable_team rh
     JOIN final_editable_pitcher ra ON rh.game_id = ra.game_id
 GROUP BY ra.game_id

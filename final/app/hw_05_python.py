@@ -14,11 +14,24 @@ from mariadb_spark_transformer1 import get_data
 from plotly import express as px
 from plotly.subplots import make_subplots
 from scipy import stats
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import confusion_matrix, mean_squared_error, r2_score, roc_curve
-from sklearn.model_selection import train_test_split
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    auc,
+    confusion_matrix,
+    mean_squared_error,
+    r2_score,
+    roc_curve,
+)
+from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 
@@ -554,7 +567,7 @@ def get_html_string(df):
 
 
 def output_all_to_html(html):
-    f = open("results/html_output.html", "w")
+    f = open("html_output.html", "w")
     f.write(html)
     f.close()
 
@@ -961,122 +974,125 @@ def style(html):
 def build_models(df, predictors, response):
     # inspired by hw_01
     X_orig = df[predictors].values  # set X_origin values
+    models = []
 
     Y = df[response].values
 
     # Split https://www.sharpsightlabs.com/blog/scikit-train_test_split/
     x_train, x_test, y_train, y_test = train_test_split(X_orig, Y, test_size=0.20)
-    # x_train = pd.DataFrame(x_train, columns=predictors)
-    # x_train['Class'] = y_train
-
-    # https://stackoverflow.com/questions/29763620/how-to-select-all-columns-except-one-in-pandas
-    """df = Remove_Outliers(x_train, 'HomeTeamWins')
-
-    x_train = df.loc[:, df.columns != 'HomeTeamWins']
-    y_train = df['HomeTeamWins']"""
 
     # Random Forest
-    print_heading("Random Forest With Pipeline")
     pipeline_rf = Pipeline(
         [
-            ("StandardScaler", StandardScaler()),
-            ("RandomForest", RandomForestClassifier(random_state=1234)),
+            ("scaler", StandardScaler()),
+            ("rf", RandomForestClassifier(random_state=1234)),
         ]
     )
-    pipeline_rf.fit(x_train, y_train.ravel())
+    pipeline_rf.fit(x_train, y_train)
 
-    probability_rf = pipeline_rf.predict_proba(x_test)
-    prediction_rf = pipeline_rf.predict(x_test)
-    print(f"Probability: {probability_rf}")
-    print(f"Predictions: {prediction_rf}")
-    # https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
-    score_rf = pipeline_rf.score(x_test, y_test)
-    print(f"Score: {score_rf}")
-
-    mse = mean_squared_error(y_test, prediction_rf)
-    r2score = r2_score(y_test, prediction_rf)
-    print("mean_squared_error: " + str(mse))
-    print("r2_score: " + str(r2score))
-
-    # https://www.projectpro.io/recipes/plot-roc-curve-in-python
-    y_score = pipeline_rf.predict_proba(x_test)[:, 1]
-    fpr, tpr, thresholds = roc_curve(y_test, y_score)
-
-    # https://mlhive.com/2023/02/create-heatmap-and-confusion-matrix-using-plotly-in-python
-    cm = confusion_matrix(y_test, prediction_rf)
-    heatmap = go.Heatmap(z=cm, x=["0", "1"], y=["0", "1"], colorscale="Blues")
-
-    # create the layout
-    layout = go.Layout(title="Confusion Metrix")
-
-    # create the figure
-    fig = go.Figure(data=[heatmap], layout=layout)
-
-    # show the figure
-    fig.show()
-
-    roc_df = pd.DataFrame({"fpr": fpr, "tpr": tpr, "thresholds": thresholds})
-    fig = px.line(
-        roc_df, x="fpr", y="tpr", hover_data=["thresholds"], title="ROC Curve"
-    )
-    # Add the diagonal reference line
-    fig.update_layout(
-        shapes=[
-            dict(
-                type="line",
-                x0=0,
-                y0=0,
-                x1=1,
-                y1=1,
-                line=dict(color="gray", dash="dash"),
-            )
-        ]
-    )
-    fig.show()
+    print_model_results(pipeline_rf, x_test, y_test, "Random Forest With Pipeline")
+    models.append(pipeline_rf)
 
     # Decision Tree
-    print_heading("Decision Tree with Pipeline")
     pipeline_dt = Pipeline(
         [
-            ("StandardScaler", StandardScaler()),
-            ("DecisionTree", DecisionTreeClassifier(random_state=1234)),
+            ("scaler", StandardScaler()),
+            ("dt", DecisionTreeClassifier(random_state=1234)),
         ]
     )
+    pipeline_dt.fit(x_train, y_train)
 
-    pipeline_dt.fit(x_train, y_train.ravel())
+    print_model_results(pipeline_dt, x_test, y_test, "Decision Tree with Pipeline")
+    models.append(pipeline_dt)
 
-    probability_dt = pipeline_dt.predict_proba(x_test)
-    prediction_dt = pipeline_dt.predict(x_test)
-    print(f"Probability: {probability_dt}")
-    print(f"Predictions: {prediction_dt}")
-    score_dt = pipeline_dt.score(x_test, y_test)
-    print(f"Score: {score_dt}")
-    mse = mean_squared_error(y_test, prediction_dt)
-    r2score = r2_score(y_test, prediction_dt)
-    print("mean_squared_error: " + str(mse))
-    print("r2_score: " + str(r2score))
+    # Logistic Regression
+    pipeline_lr = Pipeline(
+        [("scaler", StandardScaler()), ("lr", LogisticRegression(random_state=1234))]
+    )
+    pipeline_lr.fit(x_train, y_train)
 
-    y_score = pipeline_dt.predict_proba(x_test)[:, 1]
-    fpr, tpr, thresholds = roc_curve(y_test, y_score)
+    print_model_results(
+        pipeline_lr, x_test, y_test, "Logistic Regression with Pipeline"
+    )
+    models.append(pipeline_lr)
 
-    # https://mlhive.com/2023/02/create-heatmap-and-confusion-matrix-using-plotly-in-python
-    cm = confusion_matrix(y_test, prediction_dt)
+    # Support Vector Machine
+    pipeline_svm = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("SVM", SVC(probability=True, random_state=1234)),
+        ]
+    )
+    pipeline_svm.fit(x_train, y_train)
+
+    print_model_results(
+        pipeline_svm, x_test, y_test, "Support Vector Machine with Pipeline"
+    )
+    models.append(pipeline_svm)
+
+    # Gradient Boosting
+    pipeline_gb = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("GradientBoosting", GradientBoostingClassifier(random_state=1234)),
+        ]
+    )
+    pipeline_gb.fit(x_train, y_train)
+
+    print_model_results(pipeline_gb, x_test, y_test, "Gradient Boosting with Pipeline")
+    models.append(pipeline_gb)
+
+    # KNN Classifier
+    pipeline_knn = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("KNN", KNeighborsClassifier(n_neighbors=5)),
+        ]
+    )
+    pipeline_knn.fit(x_train, y_train)
+
+    print_model_results(pipeline_knn, x_test, y_test, "KNN Classifier with Pipeline")
+    models.append(pipeline_knn)
+
+    plot_all_roc_curve(models, x_test, y_test)
+    execute_cv(models, X_orig, Y)
+
+
+def print_model_results(model, x_test, y_test, title):
+    predictions = model.predict(x_test)
+    probabilities = model.predict_proba(x_test)
+    score = model.score(x_test, y_test)
+    mse = mean_squared_error(y_test, predictions)
+    r2score = r2_score(y_test, predictions)
+
+    print_heading(title)
+    print(f"Probability: {probabilities}")
+    print(f"Predictions: {predictions}")
+    print(f"Score: {score}")
+    print(f"mean_squared_error: {mse}")
+    print(f"r2_score: {r2score}")
+
+    plot_confusion_matrix(y_test, predictions, title)
+    plot_roc_curve(model, x_test, y_test, title)
+
+
+def plot_confusion_matrix(y_test, predictions, title):
+    cm = confusion_matrix(y_test, predictions)
     heatmap = go.Heatmap(z=cm, x=["0", "1"], y=["0", "1"], colorscale="Blues")
 
-    # create the layout
-    layout = go.Layout(title="Confusion Metrix")
-
-    # create the figure
+    layout = go.Layout(title=f"Confusion Matrix {title}")
     fig = go.Figure(data=[heatmap], layout=layout)
-
-    # show the figure
     fig.show()
+
+
+def plot_roc_curve(model, x_test, y_test, title):
+    y_score = model.predict_proba(x_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_score)
 
     roc_df = pd.DataFrame({"fpr": fpr, "tpr": tpr, "thresholds": thresholds})
     fig = px.line(
-        roc_df, x="fpr", y="tpr", hover_data=["thresholds"], title="ROC Curve"
+        roc_df, x="fpr", y="tpr", hover_data=["thresholds"], title=f"ROC Curve {title}"
     )
-    # Add the diagonal reference line
     fig.update_layout(
         shapes=[
             dict(
@@ -1090,6 +1106,95 @@ def build_models(df, predictors, response):
         ]
     )
     fig.show()
+
+
+def plot_all_roc_curve(models, x_test, y_test):
+    fig = go.Figure()
+
+    for i, model in enumerate(models):
+        model_name = type(model.named_steps[model.steps[-1][0]]).__name__
+        y_score = model.predict_proba(x_test)[:, 1]
+        fpr, tpr, _ = roc_curve(y_test, y_score)
+        auc_score = auc(fpr, tpr)
+
+        fig.add_trace(
+            go.Scatter(
+                x=fpr,
+                y=tpr,
+                name=f"{model_name} (AUC={auc_score:.2f})",
+                mode="lines",
+            )
+        )
+
+    fig.update_layout(
+        title="ROC Curves for Multiple Models",
+        xaxis_title="False Positive Rate",
+        yaxis_title="True Positive Rate",
+        legend_title="Models",
+        xaxis=dict(scaleanchor="y", scaleratio=1),
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        width=700,
+        height=500,
+    )
+
+    fig.add_shape(
+        type="line",
+        x0=0,
+        y0=0,
+        x1=1,
+        y1=1,
+        line=dict(color="gray", dash="dash"),
+    )
+
+    fig.show()
+    # Show the plot
+    path = "results/Plots/all_ROV.html"
+    fig.write_html(
+        file=path,
+        include_plotlyjs="cdn",
+    )
+
+
+def execute_cv(models, X_orig, Y):
+    model_names = [
+        "Random Forest",
+        "Decision Tree",
+        "Logistic Regression",
+        "SVM",
+        "Gradient Boosting",
+        "KNN",
+    ]
+
+    cv_scores = []
+    for model in models:
+        scores = cross_val_score(model, X_orig, Y, cv=5)
+        cv_scores.append(scores)
+
+    fig = go.Figure()
+    for i in range(len(cv_scores)):
+        fig.add_trace(
+            go.Box(
+                y=cv_scores[i],
+                name=model_names[i],
+                boxpoints="all",
+                jitter=0.3,
+                pointpos=-1.8,
+                boxmean=True,
+            )
+        )
+    fig.update_layout(
+        title="Cross-validation scores for different models",
+        xaxis_title="Model",
+        yaxis_title="Accuracy",
+        showlegend=False,
+    )
+    fig.show()
+    # Show the plot
+    path = "results/Plots/Cross_Validation_k_5.html"
+    fig.write_html(
+        file=path,
+        include_plotlyjs="cdn",
+    )
 
 
 def get_elo(df, predictors):
@@ -1287,9 +1392,9 @@ def main():
     curr_path = create_folder("results/Plots/")
 
     df, predictors, response = get_data()
-    df = Remove_Outliers(df, predictors)
     df, predictors = get_elo(df, predictors)
     df, predictors = get_elo_with_score(df, predictors)
+    df = Remove_Outliers(df, predictors)
     re_pr_type, continuous_vars, categorical_vars = get_response_predictor_type(
         df, predictors, response
     )
